@@ -1,8 +1,16 @@
 # Pre-Registration: LessWrong Voice Gate via Inductive Lineup
 
+## Scope
+
+This prereg covers **Stage 1: Discovery** — what drives detection in a LW paragraph lineup? The output is a ranked set of hypotheses about what makes LW prose distributionally distinct, not a confirmed answer.
+
+**Stage 2: Confirmation** (separate prereg, written after Stage 1) takes the top candidate hypothesis from Stage 1 and tests it with fixed sample size and p-values.
+
+**Stage 3: Operationalization** (separate prereg) builds a skill from the confirmed signal and validates it against held-out data.
+
 ## Research question
 
-Can a frontier model distinguish candidate paragraphs from high-karma LessWrong paragraphs in a blind lineup, using only positive samples — no rubric, no "AI slop" definition?
+Can a frontier model distinguish candidate paragraphs from high-karma LessWrong paragraphs in a blind lineup, using only positive samples? If so, what drives the distinction?
 
 ## Hypotheses
 
@@ -92,7 +100,7 @@ Total: 6 conditions × ~45 trials = ~270 trials.
 
 ### Statistical plan
 
-**E-values, not p-values.** Per Ramdas (2023): e-values are anytime-valid, compose by multiplication across conditions, and don't require Bonferroni correction. Each trial is a bet against the null.
+**E-values for discovery.** This is Stage 1 — hypothesis discovery, not confirmation. E-values (Ramdas 2023) are the right tool: anytime-valid, compose across conditions, allow early stopping on dead branches. The output is a ranked set of candidate hypotheses, not a confirmed result. Confirmation (Stage 2) uses a separate prereg with fixed sample size and p-values on the top candidate from this stage.
 
 **Per-trial e-value:** Likelihood ratio bet with fixed alternative q = 0.5 (model picks candidate with probability 0.5 under alternative).
 - Null: candidate selected with probability 1/6
@@ -201,10 +209,24 @@ High-surprise, low-cost findings are acted on first.
 
 ## Timeline
 
+### Stage 1: Discovery (this prereg)
 1. Collect positive samples — done (30 LW posts)
 2. Collect negative samples — done (15 HN posts)
-3. Prepare candidates (6 conditions)
+3. Prepare candidates (conditions C1–C6)
 4. Segment all posts into paragraphs, classify section roles
-5. Run ~270 paragraph-level lineup trials
-6. Score, generate heatmaps, run binomial tests
-7. Write RESULTS.md
+5. Run paragraph-level lineup trials, accumulate e-values
+6. Score, generate heatmaps, rank hypotheses by effect size
+7. Write RESULTS.md with top candidate hypothesis
+
+### Stage 2: Confirmation (separate prereg, after Stage 1)
+8. Pre-register the top hypothesis from Stage 1
+9. Fix sample size, define test statistic, commit to p-value threshold
+10. Collect fresh samples (not reused from Stage 1)
+11. Run confirmatory test
+12. Report result
+
+### Stage 3: Operationalization (separate prereg, after Stage 2)
+13. Build a skill from the confirmed signal
+14. Define heuristics and calibration samples
+15. Validate against held-out data
+16. Evaluate: does the skill improve LW acceptance?
