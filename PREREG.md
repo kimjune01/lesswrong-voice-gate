@@ -118,7 +118,7 @@ Betting rule is fixed before trials and does not adapt to observed outcomes.
 
 Threshold for "red": E_paragraph >= 5.4 (detected 2+/3). Heatmap thresholds are separate from evidence thresholds — a paragraph can be "red" for revision purposes without constituting strong statistical evidence on its own.
 
-**Per-post e-value:** Product of per-paragraph e-values. Valid under the fixed betting rule. Longer posts accumulate more evidence — report paragraph count alongside E_post so magnitude is interpretable.
+**Per-post e-value:** Product of per-paragraph e-values. Used as an evidence-ranking score. Because paragraph trials are clustered by post and repeated over the same candidate paragraph, post-level products are interpreted descriptively in Stage 1, not as calibrated Type-I-error guarantees. Report paragraph count alongside E_post so magnitude is interpretable.
 
 **Decision threshold:** E >= 20 is "strong evidence" against the null. E >= 100 is "very strong." These thresholds are pre-registered.
 
@@ -130,13 +130,15 @@ Threshold for "red": E_paragraph >= 5.4 (detected 2+/3). Heatmap thresholds are 
 - C2 vs C3: do HN posts and raw AI produce different reason-code distributions?
 - C6 perturbation trajectory: does each perturbation reduce the per-post e-value?
 
-### Success criteria
+### Interpretable outcomes
 
-1. C1 e-value ≈ 1 (false positive check)
-2. C2 e-value >> 1 (detects community, not just quality)
-3. C3 e-value >> 1 (baseline sensitivity)
-4. C5/C6 heatmaps produce stable paragraph-level signals across repetitions
-5. Perturbations reduce e-values or change reason-code distributions in interpretable ways
+Stage 1 does not "pass" or "fail." It produces a discovery pattern. Outcomes ranked by informativeness:
+
+1. C1 establishes the empirical false-positive baseline. Large C1 values constrain interpretation of all other conditions but do not automatically kill the method.
+2. C2 and C3 e-values characterize detection on these specific HN and AI posts, not HN or AI generally.
+3. C5/C6 heatmaps show which paragraphs and which reason codes dominate.
+4. Perturbation deltas (C5a → C6a → C6b → C6c) rank which rewrite had the largest effect on detection.
+5. The top-ranked hypothesis from this ranking becomes the candidate for Stage 2 confirmation.
 
 Monotonic trajectory (each perturbation reduces detection) is a **prediction**, not a success criterion.
 
@@ -172,6 +174,30 @@ High-surprise, low-cost findings are acted on first.
 - `analysis.py` — e-value computation, reason coding, heatmap generation, detection-rate distributions
 - `RESULTS.md` — written after all trials complete, not before
 
+## Operational specifications
+
+### Paragraph segmentation
+- Split on double newline (markdown paragraph break)
+- Merge consecutive paragraphs under 2 sentences into one unit
+- Exclude headings, bullet lists, blockquotes, code blocks, and footnotes as standalone paragraphs (they may be included as part of an adjacent paragraph)
+- Maximum paragraph length: 300 words. Longer paragraphs split at the nearest sentence boundary after 200 words.
+
+### Lineup sampling constraints
+- No two LW paragraphs from the same source post in one lineup
+- Length-match by token count within ±50%, falling back to ±100% if insufficient matches
+- Section-role classification by GPT-5.5 with a fixed prompt (frozen in `prompts/section-role.txt` before trials)
+- Candidate paragraph never repeated across the 3 repetitions with the same LW draw
+
+### Model settings (frozen before trials)
+- Primary: GPT-5.5 via codex. Record exact model identifier at trial time.
+- Temperature: 0 (deterministic)
+- System prompt: none
+- Lineup prompt: frozen in `prompts/lineup.txt`
+- Reason-code extraction: automated, blind to correctness label
+
+### Candidate freeze
+- Exact files/commits for each condition specified in `data/candidates/MANIFEST.md` before trials begin
+
 ## What we will NOT do
 
 - No rubric in the prompt. The whole point is induction from examples.
@@ -201,10 +227,10 @@ High-surprise, low-cost findings are acted on first.
 | 16 | Feynman | **Most likely artifact:** the model recognizes its own output in C3-C4 rather than detecting LW voice mismatch. C5 (human-written, not AI) is the test: if detected at the same rate as C3, the method detects "not AI," not "not LW." If lower, voice is a real signal. |
 | 17 | Pearl | No causal claim. "Lineup detection rate predicts LW reception" is correlational. No intervention on LW moderation. |
 | 18 | Ioannidis | ~270 trials across conditions. E-values compose by multiplication — no Bonferroni needed, no family-wise error inflation. Researcher degrees of freedom limited by pre-registered metrics, fixed conditions, no iterative refinement. Confound hierarchy ordered a priori, not post-hoc. One post per condition is a pilot, not a general estimate — claims are about these specific posts, not the conditions as categories. |
-| 19 | Mayo | Passing requires: C1 at chance AND C3 above chance AND C2 above chance AND reason codes map to voice/register. A method that only detects topic, memorization, or AI-ness would fail at least one gate. |
+| 19 | Mayo | Stage 1 does not have a single pass/fail gate. Severity is evaluated per-condition: C1 calibrates the baseline, C2/C3 test sensitivity on specific posts, C6 perturbation deltas rank confound contributions. If reason codes map to topic instead of register, that is a discovery, not a failure. |
 | 20 | Gwern | **Full trail published.** All trial files with prompts, responses, scores. analysis.py with no manual overrides. PREREG committed before any trials. No prompt iteration during experiment. Repo is public. |
 | 21 | Gwern | **Predictions, timestamped now** (as per-post e-values): C1 e ≈ 1. C2 e >= 100. C3 e >= 1000. C4 e >= 20. C5a e 5-100. C5b e < C5a. C6: each perturbation reduces e-value. Ordering of effect: topic > structure > style. |
-| 22 | Ramdas | E-values are anytime-valid — sequential testing is safe by construction. We still run all trials before analysis (no adaptive stopping), but the evidence measure remains valid regardless. E-values compose by multiplication across conditions, eliminating the multiple-comparison problem that Bonferroni addresses for p-values. |
+| 22 | Ramdas | E-values avoid p-value multiple-testing corrections for optional stopping, but Stage 1 rankings remain exploratory. Post-level products are descriptive scores, not calibrated guarantees, because paragraph trials are clustered by post. |
 | 23 | Storytelling | Every claim in the prereg must trace to a design choice, a prior result, or a stated assumption — not to an expected outcome. The hypothesis graph is the exception: it is a narrative with a spine (ordered predictions, kill conditions, edges). Narrative belongs there, not in the design or statistical plan. |
 
 ## Timeline

@@ -9,8 +9,8 @@ Can a paragraph-level inductive lineup detect community membership in LessWrong 
 ### H0 — Null
 **Status:** PENDING
 **Claim:** GPT-5.5 identifies the candidate paragraph at chance rate (1/6).
-**Kill condition:** Any condition shows E_post >= 20.
-**Edge if killed:** → fan out to H_topic, H_structure, H_style
+**Kill condition:** Per-condition E_post evaluated individually. H0 is not killed globally — each condition's evidence is interpreted separately.
+**Edge if killed per condition:** → evaluate H_topic, H_structure, H_style perturbation deltas
 
 ### H_topic — Topic confound
 **Status:** PENDING
@@ -45,25 +45,22 @@ Can a paragraph-level inductive lineup detect community membership in LessWrong 
 
 ## Graph structure
 
+H_topic, H_structure, H_style are contribution hypotheses evaluated by marginal perturbation delta along a fixed rewrite path. The path order is pragmatic, not a causal graph. All three may contribute simultaneously.
+
 ```
-H0 (null)
- │
- │ [any condition above chance]
- ▼
-H_topic ──[C6a drops >=15pp]──► SUPPORTED (topic contributes)
- │
- │ [C6a doesn't drop]
- ▼
-H_structure ──[C6b drops >=10pp]──► SUPPORTED (structure contributes)
- │
- │ [C6b doesn't drop]
- ▼
-H_style ──[C6c drops >=10pp]──► SUPPORTED (style contributes)
- │
- │ [C6c doesn't drop]
- ▼
-H_residual ──[C6c e-value strong]──► SUPPORTED (residual mismatch remains)
-           ──[C6c e-value ≈ 1]──► KILLED (confounds explained everything)
+Perturbation path (fixed order):
+
+C5a (raw) → C6a (topic reframed) → C6b (+ structure matched) → C6c (+ style matched)
+
+Deltas measured:
+  C5a → C6a : topic/framing delta
+  C6a → C6b : structure delta
+  C6b → C6c : style delta
+  C6c residual : remaining detection
+
+Per delta:
+  reduced detection by >= preregistered threshold → that factor contributes
+  did not reduce detection → that factor does not contribute on this path
 ```
 
 ## Cross-references
