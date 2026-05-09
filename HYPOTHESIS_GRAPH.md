@@ -9,7 +9,7 @@ Can a paragraph-level inductive lineup detect community membership in LessWrong 
 ### H0 — Null
 **Status:** PENDING
 **Claim:** GPT-5.5 identifies the candidate paragraph at chance rate (1/6).
-**Kill condition:** Any condition shows red fraction significantly above chance (Bonferroni alpha=0.0083).
+**Kill condition:** Any condition shows E_post >= 20.
 **Edge if killed:** → fan out to H_topic, H_structure, H_style
 
 ### H_topic — Topic confound
@@ -17,7 +17,7 @@ Can a paragraph-level inductive lineup detect community membership in LessWrong 
 **Claim:** Detection is driven by topic mismatch between candidate and LW lineup.
 **Perturbation:** Reframe C5 post through LW-native lens (C6a). Keep argument and structure, change framing.
 **Kill condition:** C6a red fraction does NOT drop by >= 15pp vs C5.
-**Evidence trajectory:** If C6a drops sharply → CONFIRMED (topic was the signal). If no drop → KILLED (topic isn't the driver).
+**Evidence trajectory:** If C6a drops sharply → SUPPORTED. If no drop → KILLED.
 **Edge if killed:** → H_structure
 
 ### H_structure — Format/structural confound
@@ -25,7 +25,7 @@ Can a paragraph-level inductive lineup detect community membership in LessWrong 
 **Claim:** Detection is driven by format mismatch (paragraph density, heading patterns, footnotes, epistemic status markers).
 **Perturbation:** Reformat C6a into LW structural conventions (C6b). Same argument, same framing, different format.
 **Kill condition:** C6b red fraction does NOT drop by >= 10pp vs C6a.
-**Evidence trajectory:** If C6b drops → CONFIRMED (structure was the residual signal). If no drop → KILLED.
+**Evidence trajectory:** If C6b drops → SUPPORTED. If no drop → KILLED.
 **Edge if killed:** → H_style
 
 ### H_style — Prose register confound
@@ -33,15 +33,15 @@ Can a paragraph-level inductive lineup detect community membership in LessWrong 
 **Claim:** Detection is driven by vocabulary, hedging patterns, compression style distinct from LW register.
 **Perturbation:** Rewrite C6b in LW prose register (C6c). Same argument, same framing, same structure, different voice.
 **Kill condition:** C6c red fraction does NOT drop by >= 10pp vs C6b.
-**Evidence trajectory:** If C6c drops → CONFIRMED (style was the residual signal). If no drop → KILLED.
-**Edge if killed:** → H_voice
+**Evidence trajectory:** If C6c drops → SUPPORTED. If no drop → KILLED.
+**Edge if killed:** → H_residual
 
 ### H_residual — Residual distributional mismatch
 **Status:** PENDING
 **Claim:** Detection persists after controlling for topic, structure, and style. The residual may be conceptual framing, assumed background knowledge, implicit references, local argumentative norms, or domain substance.
 **Perturbation:** None available — this is the terminal node.
 **Kill condition:** C6c e-value ≈ 1 (all confounds were sufficient, no residual).
-**Evidence trajectory:** If C6c e-value still strong → CONFIRMED (residual exists). If near 1 → KILLED (confounds explained everything).
+**Evidence trajectory:** If C6c e-value still strong → SUPPORTED. If near 1 → KILLED.
 
 ## Graph structure
 
@@ -50,19 +50,19 @@ H0 (null)
  │
  │ [any condition above chance]
  ▼
-H_topic ──[C6a drops >=15pp]──► CONFIRMED (fix: reframe topic)
+H_topic ──[C6a drops >=15pp]──► SUPPORTED (topic contributes)
  │
  │ [C6a doesn't drop]
  ▼
-H_structure ──[C6b drops >=10pp]──► CONFIRMED (fix: reformat)
+H_structure ──[C6b drops >=10pp]──► SUPPORTED (structure contributes)
  │
  │ [C6b doesn't drop]
  ▼
-H_style ──[C6c drops >=10pp]──► CONFIRMED (fix: rewrite register)
+H_style ──[C6c drops >=10pp]──► SUPPORTED (style contributes)
  │
  │ [C6c doesn't drop]
  ▼
-H_residual ──[C6c e-value strong]──► CONFIRMED (residual mismatch exists)
+H_residual ──[C6c e-value strong]──► SUPPORTED (residual mismatch remains)
            ──[C6c e-value ≈ 1]──► KILLED (confounds explained everything)
 ```
 

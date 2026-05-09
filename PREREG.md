@@ -80,7 +80,7 @@ A candidate routed elsewhere doesn't enter the lineup. The topic gate also repor
 - **C5a (target raw):** june.kim blog posts as originally written
 - **C5b (target reframed):** same posts after topic gate reframing (if the gate suggests a reframe)
 - **C5c (known rejection):** the union-find compaction post submitted to LessWrong and rejected (commit 3b269c0). Rejection feedback: "LessWrong has an unusually high bar for first-time posters." One data point, ambiguous reason — we cannot infer why it was rejected. The lineup result is compared against the real outcome, not interpreted as confirming a cause.
-- **C6 (perturbation):** C5 posts rewritten to control for one confound at a time (topic-matched → structure-matched → style-matched). Each perturbation isolates one hypothesis edge.
+- **C6 (perturbation):** C5 posts rewritten to probe one confound at a time (topic-matched → structure-matched → style-matched). Each perturbation targets one hypothesis edge but may affect others (see failure modes: perturbation entanglement).
 
 ### Trial count
 
@@ -94,23 +94,31 @@ Total: 6 conditions × ~45 trials = ~270 trials.
 
 **E-values, not p-values.** Per Ramdas (2023): e-values are anytime-valid, compose by multiplication across conditions, and don't require Bonferroni correction. Each trial is a bet against the null.
 
-**Per-trial e-value:** For each lineup trial, define the bet:
-- Null hypothesis: model picks each paragraph with probability 1/6
-- If the model correctly identifies the candidate: e = 6 (the inverse of the null probability — the model's pick was 6x more likely under the alternative)
-- If the model picks wrong or abstains: e = 6/5 × (5/6) = 1 (no evidence either way) — more precisely, e = (1 - 1/6) / (1 - p_alt), but conservatively e ≤ 1
-- Abstention ("all match"): e = 1 (no evidence)
+**Per-trial e-value:** Likelihood ratio bet with fixed alternative q = 0.5 (model picks candidate with probability 0.5 under alternative).
+- Null: candidate selected with probability 1/6
+- If correct: e = q / (1/6) = 3
+- If incorrect: e = (1-q) / (5/6) = 0.6
+- Null expectation: (1/6)(3) + (5/6)(0.6) = 1.0 ✓
 
-**Per-paragraph e-value:** Multiply across 3 repetitions. E_paragraph = e₁ × e₂ × e₃. A paragraph detected 3/3 times: E = 216. Detected 2/3: E = 36. Detected 0-1/3: E ≤ 6. Threshold for "red": E_paragraph >= 36 (detected 2+/3).
+Betting rule is fixed before trials and does not adapt to observed outcomes.
 
-**Per-post e-value:** Product of per-paragraph e-values across the post. This accumulates evidence without independence assumptions — e-values compose validly even for dependent observations.
+**Per-paragraph e-value:** Product across 3 repetitions. E_paragraph = e₁ × e₂ × e₃.
+- 3/3 detected: E = 27
+- 2/3 detected: E = 5.4
+- 1/3 detected: E = 1.08
+- 0/3 detected: E = 0.216
 
-**Per-condition e-value:** Same post-level e-value. No correction needed across conditions — e-values don't inflate with multiple comparisons.
+Threshold for "red": E_paragraph >= 5.4 (detected 2+/3). Heatmap thresholds are separate from evidence thresholds — a paragraph can be "red" for revision purposes without constituting strong statistical evidence on its own.
 
-**Decision threshold:** E >= 20 is "strong evidence" against the null (analogous to p < 0.05 but valid under optional stopping). E >= 100 is "very strong." These thresholds are pre-registered.
+**Per-post e-value:** Product of per-paragraph e-values. Valid under the fixed betting rule. Longer posts accumulate more evidence — report paragraph count alongside E_post so magnitude is interpretable.
+
+**Decision threshold:** E >= 20 is "strong evidence" against the null. E >= 100 is "very strong." These thresholds are pre-registered.
+
+**Also report:** red fraction (detected paragraphs / total paragraphs) and full detection-rate distributions per condition. E-values are the inferential tool; red fractions and heatmaps are the descriptive output.
 
 **Secondary metrics:**
 - Reason codes mapped to confound hypotheses (multi-label, not forced into the hypothesis graph — codex review caught this)
-- C1 e-values (should stay near 1 — no evidence against null)
+- C1 e-values and red fraction (defines the empirical false-positive baseline — not expected to equal chance exactly, since held-out LW paragraphs may differ from pool LW paragraphs in author, topic, or length)
 - C2 vs C3: do HN posts and raw AI produce different reason-code distributions?
 - C6 perturbation trajectory: does each perturbation reduce the per-post e-value?
 
@@ -153,7 +161,7 @@ High-surprise, low-cost findings are acted on first.
 - `data/negative-samples-hn/` — 15 HN posts (collected)
 - `data/candidates/` — posts per condition
 - `trials/` — one file per trial with lineup, prompt, response, scored result
-- `analysis.py` — binomial tests, reason coding, heatmap generation
+- `analysis.py` — e-value computation, reason coding, heatmap generation, detection-rate distributions
 - `RESULTS.md` — written after all trials complete, not before
 
 ## What we will NOT do
@@ -172,7 +180,7 @@ High-surprise, low-cost findings are acted on first.
 | 3 | Descartes | **Critical assumption:** outlier detection is driven by voice/register, not topic or memorization. If false, the experiment measures topic fit or author recognition. C1 (calibration) tests this. |
 | 4 | Hume | The mechanism: LW paragraphs share distributional properties that a model induces from examples. An outlier deviates from this induced distribution. The claim is correlational — "detected as outlier" correlates with "wouldn't survive on LW" — not causal. |
 | 5 | Hume | Results apply to GPT-5.5's detection ability on English-language rationalist blog posts. No claim about other models, communities, languages, or human readers. |
-| 6 | Mill | Each condition varies one thing: C1 = real LW (null), C2 = HN (community confound), C3 = raw AI (generation confound), C4 = humanized AI (pipeline test), C5 = user writing (target), C6 = perturbations (confound isolation). Lineup composition is randomized within conditions. |
+| 6 | Mill | Each condition probes a different contrast: C1 = real LW (baseline), C2 = HN (community), C3 = raw AI (generation), C4 = humanized AI (pipeline), C5 = user writing (target), C6 = perturbations (confound). Lineup composition is randomized within conditions. |
 | 7 | Mill | Control is C1: held-out LW paragraphs that should NOT be detected. Isolates "outlier detection" from "detecting anything not in the pool." |
 | 8 | Chamberlin | Competing explanations for detection: (a) topic mismatch — mitigated by section-role matching; (b) memorization — mitigated by author exclusion + C1; (c) AI self-recognition — tested by C2 vs C3 comparison; (d) random luck — addressed by e-value accumulation. |
 | 9 | Peirce | The hypothesis (lineup detection works) comes from the PR-description crosscheck in the drip pipeline. The LW application is a new domain. Not inferred from this data. |
