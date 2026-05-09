@@ -65,3 +65,35 @@ Five rounds of edits had left the prereg internally inconsistent — Phase 2 was
 **The meta-observation:** this prereg is itself an abduction. We hypothesized that lineup detection works for community membership, decomposed "detection" into competing explanations, and designed perturbations to kill each one. The experiment structure mirrors the sweep pipeline: hypothesis graph → perturbation → classify trajectory → follow surviving edge. If we submit this to LessWrong, the experiment design *is* the Peirce/abduction argument — a concrete instance of the framework we're proposing.
 
 **Status:** prereg ready for codex volley. Positive samples collected (30 LW). Negative samples collected (15 HN). Candidates for conditions 3-6 not yet prepared.
+
+## 2026-05-09T18:30 — Three codex volleys
+
+Three rounds with GPT-5.5. Each round caught real problems, not style nits.
+
+**Round 1** caught the math under the design: the abstention option ("if they all match, say so") broke the null — it wasn't a forced 6-way choice, so 1/6 wasn't the right baseline. Also: H_voice was too metaphysical for the data (renamed H_residual, defined operationally), topic gate was leaking treatment into C5 (split into C5a raw / C5b reframed), reason codes forced into four categories hid artifacts (expanded to multi-label open coding). The biggest structural fix: monotonic trajectory was a success criterion when it should have been a prediction.
+
+**Round 2** caught the e-value math. We had correct=6, wrong=1, which gives E[e]=1.83 under the null — not a valid e-value. Codex derived the fix: likelihood ratio bet with q=0.5 alternative, correct=3, wrong=0.6, E[e]=1.0. Also caught stale H_voice references in the hypothesis graph, Bonferroni alpha contradicting the e-value plan, and "each condition varies one thing" when conditions actually vary many things.
+
+**Round 3** shifted the framing. The prereg was still talking like a confirmation study when the two-stage design made it explicitly discovery. Codex pushed: e-value products are descriptive discovery scores (clustering/dependence breaks calibrated guarantees), C1 is an empirical baseline not expected to equal chance, the global H0 kill is too broad (per-condition evaluation instead), and the hypothesis graph is a pragmatic rewrite path not a causal elimination chain. Also demanded operational specs we hadn't written: paragraph segmentation rules, lineup sampling constraints, model settings freeze, candidate file freeze.
+
+**What I learned from the volleys:** codex is better at finding math errors and logical inconsistencies than at understanding what the experiment is for. Each round, it tried to weaken the claims — which was right for rounds 1-2 (the claims were wrong) but started to overfit in round 3 (pushing toward "this is just a descriptive study" when the hypothesis graph genuinely has a spine). The right response was to accept the math fixes and the language tightening while keeping the abductive structure. The hypothesis graph is a story — it makes ordered predictions that can fail. That's not narrative in the prereg-contamination sense. That's what a hypothesis is.
+
+## 2026-05-09T19:00 — Two-stage design
+
+June's insight: we're using the wrong statistical tool if we commit to one framework for both discovery and confirmation. E-values are for discovery — sweep the hypothesis graph, accumulate evidence, peek freely, stop early on dead branches. P-values are for confirmation — take the top candidate from Stage 1, fix the sample, test one hypothesis.
+
+This resolved the tension codex kept surfacing: the prereg was overclaiming because it was trying to be both stages at once. Now Stage 1 (this prereg) discovers which confound drives detection. Stage 2 (separate prereg, written after Stage 1) confirms it with fresh samples and p-values. Stage 3 operationalizes as a skill.
+
+The prereg checklist (23 questions) is the tool that produces prereg documents — it applies to all three stages. Each stage gets its own prereg, each walks the same checklist.
+
+## 2026-05-09T19:15 — Storytelling eviction
+
+June caught me narrating ahead of the data three times: attributing the LW rejection to "credit-based filtering" from one ambiguous sentence, pre-assigning cost rankings to hypotheses we haven't tested, interpreting model disagreement we don't have. Added Q23 to the checklist: narrative belongs in the hypothesis graph (which has a spine — ordered predictions and kill conditions), not in the design or statistical plan.
+
+The prereg itself needed a sweep for the same problem. Six instances: hypothetical examples asserted as fact, assumed mechanisms for author exclusion, claims about what's "strictly weaker" without evidence, speculation about future results. All cut.
+
+## 2026-05-09T19:30 — Known rejection added (C5c)
+
+Found the union-find compaction LW draft in git history (3b269c0). Submitted to LessWrong, rejected. Feedback: "LessWrong has an unusually high bar for first-time posters." One data point, ambiguous reason. Added as C5c — the lineup result is compared against the real outcome, nothing more.
+
+**Status:** prereg stable after 3 codex volleys. Operational specs frozen. Next: prepare candidates for C3-C6, write MANIFEST.md, freeze prompts.
