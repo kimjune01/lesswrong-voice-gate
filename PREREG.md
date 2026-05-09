@@ -10,7 +10,7 @@ Can a frontier model distinguish candidate paragraphs from high-karma LessWrong 
 
 Four confound hypotheses explain *why* the model detects the outlier, ordered by expected effect size:
 
-**H_topic:** Detection is driven by topic mismatch. The candidate writes about GitHub contribution pipelines; the lineup writes about AI alignment. Perturbation: reframe the candidate through a LW-native lens. If detection drops, topic was the signal.
+**H_topic:** Detection is driven by topic mismatch. Perturbation: reframe the candidate through a LW-native lens. If detection drops, topic was the signal.
 
 **H_structure:** Detection is driven by format/structural mismatch. LW posts use specific patterns: footnotes, epistemic status headers, inline caveats, nested parenthetical asides, section-less flowing argument. Perturbation: reformat without changing the argument. If detection drops, structure was the signal.
 
@@ -33,13 +33,13 @@ Prior work ([slop-detection](/slop-detection)) showed that explicit rubrics beco
   - AI alignment / safety (10)
   - Rationality / epistemics (10)
   - Applied / technical / field reports (10)
-- **Exclusion:** posts by Eliezer, Scott Alexander, Zvi — too recognizable, would anchor the lineup on celebrity voice rather than site voice
+- **Exclusion:** posts by Eliezer, Scott Alexander, Zvi
 - **Format:** markdown body, stripped of metadata, author, karma
 - **Status:** collected via LessWrong GraphQL API (`data/positive-samples/`)
 
 ### Paragraph-level lineup
 
-The unit of measurement is a paragraph, not a whole post. Post-level lineups are strictly weaker: they detect but don't localize. The paragraph lineup measures per-paragraph, derives the post verdict from the red fraction.
+The unit of measurement is a paragraph, not a whole post. The paragraph lineup measures per-paragraph and derives the post verdict from the red fraction.
 
 For each candidate paragraph:
 1. Classify its **section role**: opening, argument, evidence, transition, conclusion
@@ -122,13 +122,13 @@ Total: 6 conditions × ~45 trials = ~270 trials.
 4. C5/C6 heatmaps produce stable paragraph-level signals across repetitions
 5. Perturbations reduce e-values or change reason-code distributions in interpretable ways
 
-Monotonic trajectory (each perturbation reduces detection) is a **prediction**, not a success criterion — real effects may be non-monotonic if a perturbation introduces new tells.
+Monotonic trajectory (each perturbation reduces detection) is a **prediction**, not a success criterion.
 
 ### Hypothesis ranking (post-experiment)
 
 After trials complete, surviving hypotheses are ranked by:
-- **Cost to fix:** how much work to remove this mismatch signal (topic reframing = low, structural conventions = medium, prose register = high, residual = may be unfixable)
-- **Surprise:** how unexpected the finding is (topic mismatch = low surprise, residual detection after all perturbations = high surprise)
+- **Cost to fix:** estimated work to remove this mismatch signal
+- **Surprise:** how far the result deviates from predictions
 
 High-surprise, low-cost findings are acted on first.
 
@@ -145,7 +145,7 @@ High-surprise, low-cost findings are acted on first.
 
 - **Primary:** GPT-5.5 via codex (continuity with slop-detection)
 - **Secondary:** Gemini 3.1 Pro (independent model family, cross-validation)
-- Disagreement between models suggests the detection signal is model-specific, not structural.
+- Disagreement between models is reported; interpretation deferred to RESULTS.md.
 
 ## Outputs
 
