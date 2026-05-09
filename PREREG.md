@@ -16,9 +16,9 @@ Four confound hypotheses explain *why* the model detects the outlier, ordered by
 
 **H_style:** Detection is driven by prose register mismatch. LW has a specific vocabulary, hedging pattern, and compression style distinct from HN/personal blogs. Perturbation: rewrite in LW register without changing topic or structure. If detection drops, style was the signal.
 
-**H_voice:** Detection persists after controlling for topic, structure, and style — the candidate lacks something irreducible about the author's relationship to the LW intellectual community. This is the hard signal.
+**H_residual:** Detection persists after controlling for topic, structure, and style. The residual may be conceptual framing, assumed background knowledge, implicit references, local argumentative norms, or domain substance. Defined operationally: residual reasons cite something other than surface prose.
 
-The hypothesis graph is: H_topic → H_structure → H_style → H_voice. Each perturbation kills or confirms one edge.
+The hypothesis graph is: H_topic → H_structure → H_style → H_residual. Each perturbation estimates whether removing one salient mismatch reduces detection, but the interventions are not guaranteed to isolate independent causal factors (topic reframing may change style; structure carries epistemic stance).
 
 ## Why induction, not rubric
 
@@ -45,7 +45,11 @@ For each candidate paragraph:
 1. Classify its **section role**: opening, argument, evidence, transition, conclusion
 2. Draw 5 paragraphs from LW positive samples matched by section role
 3. Shuffle into random order with neutral labels (Paragraph A through F)
-4. Prompt: "Here are 6 paragraphs from blog posts in the same genre. One may not match the others. Which one, and why? If they all match, say so."
+4. Prompt: "Here are 6 paragraphs from blog posts in the same genre. Which one is least like the others? Name it and explain why."
+   - Forced choice — no abstention. This fixes the null at exactly 1/6.
+   - If the model names multiple: take the first named.
+   - If it picks a LW paragraph: scored as miss (e = 1).
+   - Reason codes extracted from the explanation after scoring correctness.
 5. Repeat 3 times with different LW draws per paragraph
 
 **Post-level verdict** is derived: if >= 30% of a post's paragraphs are red (detected 2+ times out of 3), the post fails the gate. The threshold is pre-registered, not discovered from data.
@@ -55,7 +59,7 @@ For each candidate paragraph:
 - **Yellow (2/3 detected):** borderline
 - **Red (3/3 detected):** paragraph fails
 
-With reason codes per detection: {topic, structure, style, voice}.
+With reason codes per detection: multi-label from {topic, structure, style, conceptual_framing, reference_density, argument_quality, length, specificity, other}. Not forced into the hypothesis graph — open coding reveals artifacts the graph would hide.
 
 ### Topic gate (pre-lineup)
 
@@ -70,10 +74,11 @@ A candidate routed elsewhere doesn't enter the lineup. The topic gate also repor
 ### Candidate conditions
 
 - **C1 (calibration — should pass):** held-out LessWrong posts
-- **C2 (HN negative — should fail):** high-scoring Hacker News blog posts. Same internet, different community. Tests community detection vs quality detection. Source: `data/negative-samples-hn/`
+- **C2 (HN negative — should fail):** high-scoring Hacker News blog posts. **Assumption:** a typical high-effort HN post submitted to LessWrong would be rejected or buried. This is mostly accurate but not perfectly — some HN posts would survive on LW. Everything downstream of C2 is contaminated with this assumption. That's the cost of using HN as a negative proxy without actual LW rejection data. Source: `data/negative-samples-hn/`
 - **C3 (raw AI — should fail):** Claude-generated posts on LW-adjacent topics
 - **C4 (humanized AI):** Claude posts after copyedit pipeline (humanize → tighten → sharpen)
-- **C5 (target):** june.kim blog posts, reframed through topic gate if needed
+- **C5a (target raw):** june.kim blog posts as originally written
+- **C5b (target reframed):** same posts after topic gate reframing (if the gate suggests a reframe)
 - **C6 (perturbation):** C5 posts rewritten to control for one confound at a time (topic-matched → structure-matched → style-matched). Each perturbation isolates one hypothesis edge.
 
 ### Trial count
@@ -86,35 +91,54 @@ Total: 6 conditions × ~45 trials = ~270 trials.
 
 ### Statistical plan
 
-**Primary metric:** red paragraph fraction per condition.
+**E-values, not p-values.** Per Ramdas (2023): e-values are anytime-valid, compose by multiplication across conditions, and don't require Bonferroni correction. Each trial is a bet against the null.
 
-- Chance baseline: 1/6 ≈ 16.7% of paragraphs detected by chance
-- Per-paragraph: red if identified as outlier in >= 2/3 repetitions
-- Per-post: red fraction = red paragraphs / total paragraphs
-- Per-condition: Bonferroni-corrected alpha = 0.05/6 = 0.0083. Test whether the red fraction is significantly above the null rate (one-sided binomial on paragraph counts)
+**Per-trial e-value:** For each lineup trial, define the bet:
+- Null hypothesis: model picks each paragraph with probability 1/6
+- If the model correctly identifies the candidate: e = 6 (the inverse of the null probability — the model's pick was 6x more likely under the alternative)
+- If the model picks wrong or abstains: e = 6/5 × (5/6) = 1 (no evidence either way) — more precisely, e = (1 - 1/6) / (1 - p_alt), but conservatively e ≤ 1
+- Abstention ("all match"): e = 1 (no evidence)
 
-**Power:** For a 15-paragraph post, detecting a true red rate of 40% vs null 16.7% has >90% power. Bonferroni across 6 conditions: still well-powered.
+**Per-paragraph e-value:** Multiply across 3 repetitions. E_paragraph = e₁ × e₂ × e₃. A paragraph detected 3/3 times: E = 216. Detected 2/3: E = 36. Detected 0-1/3: E ≤ 6. Threshold for "red": E_paragraph >= 36 (detected 2+/3).
+
+**Per-post e-value:** Product of per-paragraph e-values across the post. This accumulates evidence without independence assumptions — e-values compose validly even for dependent observations.
+
+**Per-condition e-value:** Same post-level e-value. No correction needed across conditions — e-values don't inflate with multiple comparisons.
+
+**Decision threshold:** E >= 20 is "strong evidence" against the null (analogous to p < 0.05 but valid under optional stopping). E >= 100 is "very strong." These thresholds are pre-registered.
 
 **Secondary metrics:**
-- Reason codes mapped to confound hypotheses
-- C1 false positive rate (should be ≈ chance)
-- C2 vs C3: community mismatch vs AI-ness — do HN posts and raw AI fail for different reasons?
-- C6 perturbation trajectory: which confound removal has the largest effect?
+- Reason codes mapped to confound hypotheses (multi-label, not forced into the hypothesis graph — codex review caught this)
+- C1 e-values (should stay near 1 — no evidence against null)
+- C2 vs C3: do HN posts and raw AI produce different reason-code distributions?
+- C6 perturbation trajectory: does each perturbation reduce the per-post e-value?
 
 ### Success criteria
 
-1. C1 red fraction ≈ chance (false positive check)
-2. C2 red fraction significantly above chance (detects community, not just quality)
-3. C3 red fraction significantly above chance (baseline sensitivity)
-4. C6 perturbations produce a monotonic trajectory: each confound removed reduces detection
-5. C5 provides actionable signal: either passes (ready to submit) or the surviving confound names the fix
+1. C1 e-value ≈ 1 (false positive check)
+2. C2 e-value >> 1 (detects community, not just quality)
+3. C3 e-value >> 1 (baseline sensitivity)
+4. C5/C6 heatmaps produce stable paragraph-level signals across repetitions
+5. Perturbations reduce e-values or change reason-code distributions in interpretable ways
+
+Monotonic trajectory (each perturbation reduces detection) is a **prediction**, not a success criterion — real effects may be non-monotonic if a perturbation introduces new tells.
+
+### Hypothesis ranking (post-experiment)
+
+After trials complete, surviving hypotheses are ranked by:
+- **Cost to fix:** how much work to remove this mismatch signal (topic reframing = low, structural conventions = medium, prose register = high, residual = may be unfixable)
+- **Surprise:** how unexpected the finding is (topic mismatch = low surprise, residual detection after all perturbations = high surprise)
+
+High-surprise, low-cost findings are the most valuable — they name a fix we didn't know we needed. Low-surprise, high-cost findings (like "you need to write more like Eliezer") are noise. This ranking determines which fixes to attempt first.
 
 ### Failure modes
 
 - **Topic confound:** model detects topic, not voice. Mitigated by section-role matching and topic gate.
 - **Length confound:** paragraphs vary in length. Mitigated by min 2 sentences per paragraph, length-aware draw from LW pool.
-- **Memorization:** model recognizes LW posts from training. Mitigated by author exclusion + C1 false positive check.
-- **Low power:** at 15 paragraphs with Bonferroni correction, power is >90% at 40% true red rate, ~50% at 30%. Effects below 30% are undetectable but also too weak to be a useful gate.
+- **Memorization:** model recognizes LW posts from training. Mitigated by author exclusion + C1 false positive check. Note: C1 passing doesn't fully rule out memorization — recognized LW paragraphs would look in-distribution regardless.
+- **HN assumption contamination:** C2 assumes HN posts would fail on LW. Some wouldn't. All findings downstream of C2 carry this assumption.
+- **Perturbation entanglement:** topic reframing may change style; structure carries epistemic stance. The confound chain is a useful revision workflow but not a clean causal decomposition. Stated explicitly in the hypothesis graph.
+- **Reason code circularity:** the detector explains its own detection. Useful for revision, weak as measurement. Multi-label open coding partially mitigates.
 
 ## Models
 
@@ -152,18 +176,18 @@ Total: 6 conditions × ~45 trials = ~270 trials.
 | 8 | Chamberlin | Competing explanations for detection: (a) topic mismatch — mitigated by section-role matching; (b) memorization — mitigated by author exclusion + C1; (c) AI self-recognition — tested by C2 vs C3 comparison; (d) random luck — addressed by binomial test with Bonferroni. |
 | 9 | Peirce | The hypothesis (lineup detection works) comes from the PR-description crosscheck in the drip pipeline. The LW application is a new domain. Not inferred from this data. |
 | 10 | Fisher | Lineup position randomized (shuffled labels A-F). Positive sample draws randomized. Section-role matching is systematic but pre-registered. |
-| 11 | Popper | **Falsification:** C1 red fraction significantly above chance → method broken (detecting "not in pool"). C3 red fraction NOT above chance → method has no power. Either kills the approach. |
-| 12 | Popper | The bar is informative: Bonferroni-corrected alpha=0.0083 on paragraph-count binomial. Not testing "better than coin flip" — testing "better than 1/6 random guess on a 6-way forced choice." |
+| 11 | Popper | **Falsification:** C1 e-value >> 1 → method broken (detecting "not in pool"). C3 e-value ≈ 1 → method has no power. Either kills the approach. |
+| 12 | Popper | The bar is informative: e-value threshold 20 (strong) or 100 (very strong). Forced 6-way choice, null = 1/6. E-values compose across conditions without correction. |
 | 13 | Kuhn | **Invisible assumption:** "high karma = representative LW post." Karma correlates with agreement and timing, not just quality. May exclude contrarian posts. "LW voice" may not be a single distribution — stratification partially addresses. |
 | 14 | Platt | Excludes memorization (via C1), topic matching (via section-role + reason coding), AI self-recognition (via C2 vs C3). If all are excluded and detection persists, voice/register mismatch is the remaining explanation. |
 | 15 | Meehl | Predictions are specific and ordered: C1 < C5 < C4 < C2 < C3 in red fraction. More data sharpens the ordering. The prediction can fail if the ordering is wrong. |
 | 16 | Feynman | **Most likely artifact:** the model recognizes its own output in C3-C4 rather than detecting LW voice mismatch. C5 (human-written, not AI) is the test: if detected at the same rate as C3, the method detects "not AI," not "not LW." If lower, voice is a real signal. |
 | 17 | Pearl | No causal claim. "Lineup detection rate predicts LW reception" is correlational. No intervention on LW moderation. |
-| 18 | Ioannidis | ~270 trials across 6 conditions. Bonferroni correction (alpha=0.0083) controls family-wise error. Power >90% at 40% true red rate for 15-paragraph posts. Researcher degrees of freedom limited by pre-registered metrics, fixed conditions, no iterative refinement. Confound hierarchy ordered a priori, not post-hoc. |
+| 18 | Ioannidis | ~270 trials across conditions. E-values compose by multiplication — no Bonferroni needed, no family-wise error inflation. Researcher degrees of freedom limited by pre-registered metrics, fixed conditions, no iterative refinement. Confound hierarchy ordered a priori, not post-hoc. One post per condition is a pilot, not a general estimate — claims are about these specific posts, not the conditions as categories. |
 | 19 | Mayo | Passing requires: C1 at chance AND C3 above chance AND C2 above chance AND reason codes map to voice/register. A method that only detects topic, memorization, or AI-ness would fail at least one gate. |
 | 20 | Gwern | **Full trail published.** All trial files with prompts, responses, scores. analysis.py with no manual overrides. PREREG committed before any trials. No prompt iteration during experiment. Repo is public. |
-| 21 | Gwern | **Predictions, timestamped now** (as red paragraph fractions): C1 < 20%. C2 >= 60%. C3 >= 75%. C4 >= 40%. C5 20-50%. C6: topic-match drops by >= 15pp vs C5, structure-match by >= 10pp more, style-match by >= 10pp more. Ordering: topic > structure > style in effect size. |
-| 22 | Ramdas | No sequential testing. All ~270 trials run before analysis. No peeking, no sample expansion. If underpowered, note in RESULTS.md and pre-register a follow-up. |
+| 21 | Gwern | **Predictions, timestamped now** (as per-post e-values): C1 e ≈ 1. C2 e >= 100. C3 e >= 1000. C4 e >= 20. C5a e 5-100. C5b e < C5a. C6: each perturbation reduces e-value. Ordering of effect: topic > structure > style. |
+| 22 | Ramdas | E-values are anytime-valid — sequential testing is safe by construction. We still run all trials before analysis (no adaptive stopping), but the evidence measure remains valid regardless. E-values compose by multiplication across conditions, eliminating the multiple-comparison problem that Bonferroni addresses for p-values. |
 
 ## Timeline
 
