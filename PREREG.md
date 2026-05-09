@@ -34,12 +34,24 @@ Each trial:
 3. Shuffle into random order with neutral labels (Text A through F)
 4. Prompt: "Here are 6 posts. One may not belong to the same distribution as the others. Which one, and why? If they all belong, say so."
 
+### Topic gate (pre-lineup)
+
+Before voice testing, run a topic fitness check. Not every june.kim post belongs on LessWrong — the site has a specific appetite and a candidate must fit it.
+
+1. Extract the candidate's central question in one sentence
+2. Present it alongside 10 real LessWrong post titles+abstracts (high karma, mixed topics)
+3. Prompt: "A user is deciding where to post this. Does it belong in this collection, or somewhere else? If somewhere else, where?"
+
+A candidate that gets routed elsewhere (Hacker News, personal blog, ML subreddit) doesn't enter the voice lineup. The topic gate filters before the voice gate — no point polishing voice for an audience that won't click.
+
+**Topic translation:** some june.kim posts have LW-relevant substance but wrong framing. "Bot-magnet issues on GitHub" is an HN post. "Adversarial dynamics in open-source contribution markets" is a LW post. Same content, different lens. The topic gate should also report: "this could fit if reframed as X."
+
 ### Candidate posts
 
 - **Condition 1 (calibration):** known LessWrong posts held out from the pool (should NOT be identified as outliers)
 - **Condition 2 (baseline):** raw Claude-generated posts on LW-adjacent topics (should be identified)
 - **Condition 3 (humanized):** Claude posts after copyedit pipeline (humanize → tighten → sharpen)
-- **Condition 4 (target):** the user's actual blog posts from june.kim
+- **Condition 4 (target):** the user's actual blog posts from june.kim, reframed through the topic gate's suggested lens if needed
 
 ### Trial count
 
@@ -94,6 +106,33 @@ The experiment succeeds (voice gate is viable) if:
 - No iterative refinement during the experiment. Run all 120 trials, analyze, then decide.
 - No cherry-picking which trials to report. All trials, all results.
 - No post-hoc metric invention. The metrics above are the metrics.
+
+## Prereg checklist (22 questions)
+
+| # | Source | Answer |
+|---|--------|--------|
+| 1 | Bacon | Positive samples are stratified by topic cluster to prevent cherry-picking posts that favor or disfavor detection. Lineup draws are randomized. |
+| 2 | Bacon | Data collection is fixed: 30 LW posts collected before any trials run. Candidate selection per condition is fixed before trials. No adjustments after seeing results. |
+| 3 | Descartes | **Critical assumption:** the model's outlier detection is driven by voice/register, not topic or memorization. If false, the experiment measures topic fit or author recognition, not voice. Condition 1 (calibration) tests this — if held-out LW posts are detected as outliers, the assumption fails. |
+| 4 | Hume | The mechanism: LW posts share distributional properties (vocabulary, argument structure, epistemic register) that a model can induce from examples. An outlier deviates from this induced distribution. The claim is correlational — "detected as outlier" correlates with "wouldn't survive on LW" — not causal. We don't claim detection *causes* rejection. |
+| 5 | Hume | Results apply to GPT-5.5's detection ability on English-language rationalist blog posts. No claim about other models, other communities, other languages, or human readers. |
+| 6 | Mill | Each condition varies one thing: Condition 1 = real LW post (null), Condition 2 = raw AI, Condition 3 = humanized AI, Condition 4 = user's actual writing. Lineup composition varies across trials but is randomized, not systematically different between conditions. |
+| 7 | Mill | Control is Condition 1: held-out LW posts that should NOT be detected. This isolates "outlier detection" from "detecting anything that isn't in the training pool." |
+| 8 | Chamberlin | Competing explanations for high detection on Conditions 2-4: (a) topic mismatch, not voice — mitigated by topic matching; (b) length mismatch — mitigated by trimming to 2000 words; (c) memorization of specific LW posts — mitigated by author exclusion + Condition 1 check; (d) the model is random but we got lucky — addressed by binomial test. We test between (a) and "true voice detection" via reason coding. |
+| 9 | Peirce | The hypothesis (lineup detection works) comes from the PR-description crosscheck in the drip pipeline, which uses the same lineup method. The LW application is a new domain. We are not inferring the hypothesis from this data. |
+| 10 | Fisher | Lineup position is randomized (shuffled labels A-F). Positive sample draws are randomized. No systematic assignment bias. |
+| 11 | Popper | **Falsification:** if Condition 1 identification rate is significantly above chance (>= 9/30), the method is broken — it's detecting "not in the pool" rather than "doesn't belong." If Condition 2 identification rate is NOT above chance, the method has no power. Either outcome kills the approach. |
+| 12 | Popper | The bar (>= 9/30, p < 0.05 one-sided binomial) is informative: chance is 5/30. The gap between chance (5) and threshold (9) is meaningful. We are not testing "model does better than a coin flip" — we're testing "model does better than random guessing on a 6-way forced choice." |
+| 13 | Kuhn | **Invisible assumption:** "high karma = good LW post." Karma correlates with agreement and timing, not just quality. A >= 100 threshold filters for broad approval but may exclude contrarian or niche posts that represent the real LW distribution. Also: "LW voice" may not be a single distribution — alignment posts vs rationality posts vs field reports may have different registers. Stratification partially addresses this. |
+| 14 | Platt | The experiment excludes the alternative "lineup detection is just memorization" (via Condition 1). It excludes "lineup detection is just topic matching" (via topic-matched lineups + reason coding). If all alternatives are excluded and detection still works, voice/register mismatch is the remaining explanation. |
+| 15 | Meehl | With a 6-way forced choice, more data makes the test harder only if the model's true accuracy is close to chance. If the model is genuinely detecting outliers, more trials increases confidence. The prediction is specific: Condition 1 at chance, Condition 2 well above chance, Conditions 3-4 somewhere between. More data sharpens these estimates. The prediction is directional but the ordering (C1 < C4 < C3 < C2) is specific enough to fail. |
+| 16 | Feynman | **Most likely artifact:** the model recognizes its own output in Conditions 2-3 ("this sounds like me") rather than detecting voice mismatch with LW. This would still produce high detection rates but wouldn't generalize to human-written non-LW posts. Condition 4 (user's actual writing) is the test: if the model detects it at the same rate as raw AI, it's detecting "not AI" rather than "not LW." If it detects it at a lower rate, voice is a real signal. |
+| 17 | Pearl | No causal claim. The claim is: "lineup detection rate predicts LW reception" — a correlational hypothesis. We don't intervene on LW moderation. |
+| 18 | Ioannidis | 30 trials per condition, 4 conditions. Power: at n=30, binomial test detects true accuracy >= 40% with 80% power (H0: p=1/6). If the true effect is smaller (e.g., 25% accuracy), we're underpowered. Researcher degrees of freedom: limited by pre-registered metrics, no iterative refinement, all trials reported. Prior probability that lineup detection works: moderate — it works for PR descriptions, unknown for long-form prose. |
+| 19 | Mayo | The test is moderately severe. Passing requires: (a) Condition 1 at chance AND (b) Condition 2 above chance AND (c) reasons coded as voice/register, not topic. A method that only detects topic mismatch would fail (a) or (c). A method that only detects "not in pool" would fail (a). A method that only detects AI output would pass (a-b) but provide no signal on Condition 4. |
+| 20 | Gwern | **Full trail published.** All 120 trial files with prompts, responses, and scores. analysis.py with no manual overrides. PREREG committed before any trials run. No prompt iteration during the experiment. The repo is public. |
+| 21 | Gwern | Predictions, timestamped now: (1) Condition 1 accuracy < 9/30. (2) Condition 2 accuracy >= 20/30. (3) Condition 3 accuracy >= 12/30. (4) Condition 4 accuracy between 8/30 and 18/30. Scored after all trials complete. |
+| 22 | Ramdas | No sequential testing. All 120 trials run before any analysis. No peeking, no sample expansion. If 30 trials per condition proves underpowered, we note it in RESULTS.md and pre-register a follow-up with more trials rather than expanding mid-experiment. |
 
 ## Timeline
 
