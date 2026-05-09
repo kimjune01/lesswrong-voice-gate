@@ -58,3 +58,33 @@ Each experiment follows the same arc:
 5. Check if the detector survives adversarial feedback (slop-detection says: two iterations)
 
 The prereg checklist (23 questions) applies to each experiment. The hypothesis graph structures each investigation. E-values for discovery, p-values for confirmation. Publication forces merit-based evaluation by making tools available to both sides.
+
+## Dynamics
+
+### Non-stationary channel
+
+The maintainer's attention is the channel. Contributions are the signal. Slop is the noise. Shannon gives capacity for a fixed noise floor. But the noise is adversarial — it adapts to the filter. Every improvement in filtering lowers the bar for submission, which increases volume, which demands better filtering. This is not classical information theory. It's a coupled dynamical system.
+
+### No convergence
+
+Both sides have a frequency knob. The contributor controls submission rate (drip). The maintainer controls review rate. The coupling between them is strong — feedback is fast, iteration is cheap. Strogatz would frame this as coupled oscillators. Depending on coupling strength: oscillation (arms race cycles), convergence (stable equilibrium), or chaos (unpredictable regime shifts like curl's shutdown). Strong coupling + fast iteration points to oscillation or chaos, not equilibrium. The research program doesn't end.
+
+### Asymptotic bar
+
+The bar rises until unaided contribution is impossible. Spell checkers → grammar checkers → style checkers → agent pipelines. Each generation of tooling becomes the floor. Nobody submits academic papers without LaTeX. Nobody will submit PRs without an agent pipeline. The tool becomes invisible, the unaided human becomes the outlier.
+
+### Two-sided defense
+
+Agents screening agents. Humans review only what survives machine pre-filtering. The maintainer never touches volume — they touch a feed at their chosen pace. The contributor's drip controls outbound rate. The maintainer's bot controls inbound rate. The human controls the frequency knob on both sides. The machines do the screening.
+
+### Honeypots as active defense
+
+An insta-ban suite that catches the bottom 90% by effort restores the hit rate above the maintainer's pain threshold. Open a bot-magnet issue with trivial change in dead code, passing test suite, maintainer-filed label — scores perfectly on every /actionable signal. Insta-ban on submission. The body-count check would walk right into it. Defense: a pristine issue with no history on a repo that has history is the tell. Real bugs have discussion, failed attempts, edge cases.
+
+### Excalidraw pattern
+
+18 dead PRs on one issue from 2 years ago. A human wouldn't touch it. The per-issue body-count check already catches this. No new tool needed — the existing threshold (3+ closed-unmerged) handles it. The lesson is that the tool works for extreme cases without modification.
+
+### Publication as forcing function
+
+Publishing the attack forces merit-based evaluation. If the voice gate skill is public and anyone can use it, moderators can't reject selectively on suspicion of using it — that means rejecting anyone who writes well on their first post. But the countercase exists: communities may respond by restricting intake instead of improving evaluation (curl → GitHub-only reporting, no rewards). Trust vs merit is not resolved by publishing; it's surfaced.
