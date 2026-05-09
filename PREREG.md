@@ -189,7 +189,7 @@ High-surprise, low-cost findings are acted on first.
 | 20 | Gwern | **Full trail published.** All trial files with prompts, responses, scores. analysis.py with no manual overrides. PREREG committed before any trials. No prompt iteration during experiment. Repo is public. |
 | 21 | Gwern | **Predictions, timestamped now** (as per-post e-values): C1 e ≈ 1. C2 e >= 100. C3 e >= 1000. C4 e >= 20. C5a e 5-100. C5b e < C5a. C6: each perturbation reduces e-value. Ordering of effect: topic > structure > style. |
 | 22 | Ramdas | E-values are anytime-valid — sequential testing is safe by construction. We still run all trials before analysis (no adaptive stopping), but the evidence measure remains valid regardless. E-values compose by multiplication across conditions, eliminating the multiple-comparison problem that Bonferroni addresses for p-values. |
-| 23 | Storytelling | **Are we narrating ahead of the data?** Every claim in RESULTS.md must trace to a number or a trial output. No fitting results into a pre-existing narrative (e.g., "credit-based filtering" from one ambiguous rejection). No assuming HN posts *would* be rejected on LW — we only know they're distributionally distinct if the lineup says so. No interpreting reason codes as causal when the detector is explaining its own output. If a result is ambiguous, report it as ambiguous. |
+| 23 | Storytelling | Every claim in RESULTS.md must trace to a number. If ambiguous, report as ambiguous. |
 
 ## Timeline
 
