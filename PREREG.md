@@ -4,11 +4,21 @@
 
 Can a frontier model distinguish a candidate blog post from high-karma LessWrong posts in a blind lineup, using only positive samples (no "AI slop" definition, no rubric)?
 
-## Hypothesis
+## Hypotheses
 
-**H0:** GPT-5.5 identifies the candidate as the outlier at chance rate (1/N where N = lineup size).
+**H0 (null):** GPT-5.5 identifies the candidate as the outlier at chance rate (1/6).
 
-**H1:** GPT-5.5 identifies the candidate at a rate significantly above chance, and the stated reasons correspond to voice/register mismatch rather than topic mismatch.
+Three confound hypotheses explain *why* the model detects the outlier. Each predicts different reason codes and responds to different perturbations:
+
+**H_topic:** Detection is driven by topic mismatch. The candidate writes about GitHub contribution pipelines; the lineup writes about AI alignment. Perturbation: reframe the candidate through a LW-native lens (e.g., "adversarial dynamics in open-source contribution markets"). If detection drops, topic was the signal.
+
+**H_structure:** Detection is driven by format/structural mismatch. LW posts use specific patterns: footnotes, epistemic status headers, inline caveats, nested parenthetical asides, section-less flowing argument. Perturbation: reformat the candidate into LW structural conventions without changing the argument. If detection drops, structure was the signal.
+
+**H_style:** Detection is driven by prose register mismatch. LW has a specific vocabulary, hedging pattern, and compression style distinct from HN/personal blogs. Perturbation: rewrite the candidate in LW register without changing topic or structure. If detection drops, style was the signal.
+
+**H_voice (target):** Detection persists after controlling for topic, structure, and style — the candidate lacks something irreducible about the author's relationship to the LW intellectual community. This is the hard signal and the one worth investigating if the others are eliminated.
+
+The hypothesis graph is: H_topic → H_structure → H_style → H_voice. Each perturbation kills or confirms one edge. The investigation follows the surviving path.
 
 ## Why induction, not rubric
 
@@ -48,14 +58,16 @@ A candidate that gets routed elsewhere (Hacker News, personal blog, ML subreddit
 
 ### Candidate posts
 
-- **Condition 1 (calibration):** known LessWrong posts held out from the pool (should NOT be identified as outliers)
-- **Condition 2 (baseline):** raw Claude-generated posts on LW-adjacent topics (should be identified)
-- **Condition 3 (humanized):** Claude posts after copyedit pipeline (humanize → tighten → sharpen)
-- **Condition 4 (target):** the user's actual blog posts from june.kim, reframed through the topic gate's suggested lens if needed
+- **Condition 1 (calibration — should pass):** known LessWrong posts held out from the pool
+- **Condition 2 (HN negative — should fail):** high-scoring Hacker News blog posts. Same internet, different community. Tests whether the lineup detects community membership, not just "good writing." Source: `data/negative-samples-hn/`
+- **Condition 3 (raw AI — should fail):** Claude-generated posts on LW-adjacent topics
+- **Condition 4 (humanized AI):** Claude posts after copyedit pipeline (humanize → tighten → sharpen)
+- **Condition 5 (target):** the user's actual blog posts from june.kim, reframed through the topic gate's suggested lens if needed
+- **Condition 6 (perturbation):** Condition 5 posts rewritten to control for one confound at a time (topic-matched, then structure-matched, then style-matched). Each perturbation isolates one hypothesis edge.
 
 ### Trial count
 
-- 30 trials per condition = 120 total
+- 20 trials per condition × 6 conditions = 120 total
 - Each trial uses a fresh draw of 5 positive samples
 - Candidate post is fixed within a condition but lineup composition varies
 
@@ -65,26 +77,29 @@ A candidate that gets routed elsewhere (Hacker News, personal blog, ML subreddit
 
 - Chance baseline: 1/6 ≈ 16.7%
 - Detection threshold: significantly above chance at p < 0.05 (one-sided binomial test)
-- With 30 trials: need >= 9/30 correct identifications to reject H0 (binomial, n=30, p=1/6, alpha=0.05)
+- With 20 trials: need >= 7/20 correct identifications to reject H0 (binomial, n=20, p=1/6, alpha=0.05)
 
 **Secondary metrics:**
-- Reason classification: for each correct identification, code the stated reason as {voice, structure, topic, substance, style, other}
+- Reason classification: for each correct identification, code the stated reason as {topic, structure, style, voice, substance, other} — maps directly to confound hypotheses
 - False positive rate on Condition 1 (should be ≈ chance)
-- Condition 3 vs Condition 4 gap: does the copyedit pipeline close the gap toward the user's actual voice?
+- Condition 2 (HN) vs Condition 3 (raw AI) comparison: does the model detect community mismatch or AI-ness?
+- Condition 6 (perturbation) trajectories: which perturbation kills detection? That identifies the dominant confound.
 
 ### Success criteria
 
 The experiment succeeds (voice gate is viable) if:
-1. Condition 1 (held-out LW posts) identification rate is NOT significantly above chance (false positive check)
-2. Condition 2 (raw AI) identification rate IS significantly above chance
-3. Condition 4 (user's posts) provides the actionable signal: either the user passes (identification ≈ chance, ready to submit) or the reasons name specific fixable tells
+1. Condition 1 (held-out LW) detection rate ≈ chance (false positive check)
+2. Condition 2 (HN) detection rate significantly above chance (the lineup detects community, not just quality)
+3. Condition 3 (raw AI) detection rate significantly above chance (baseline sensitivity)
+4. Condition 6 (perturbations) produces a monotonic trajectory: each confound removed reduces detection rate. The confound hierarchy H_topic → H_structure → H_style → H_voice is ordered by which perturbation has the largest effect.
+5. Condition 5 (user's posts) provides actionable signal: either passes (ready to submit) or the surviving confound names the fix
 
 ### Failure modes
 
 - **Topic confound:** model identifies the outlier by topic mismatch, not voice. Mitigated by topic-matching the candidate to the lineup draw.
 - **Length confound:** LW posts vary wildly in length. Mitigated by trimming all entries to first 2000 words.
 - **Memorization:** model recognizes specific LW posts from training. Mitigated by excluding the most famous authors and checking if Condition 1 accuracy is above chance (it shouldn't be).
-- **Low power:** 30 trials per condition may be insufficient. Power analysis: at 30 trials, we can detect a true accuracy of >= 40% with 80% power (binomial test, H0 p=1/6). If the effect is smaller than that, we need more trials.
+- **Low power:** 20 trials per condition may be insufficient. Power analysis: at 20 trials, we can detect a true accuracy of >= 45% with 80% power (binomial test, H0 p=1/6). If the effect is smaller, we need more trials.
 
 ## Models
 
@@ -131,8 +146,8 @@ The experiment succeeds (voice gate is viable) if:
 | 18 | Ioannidis | 30 trials per condition, 4 conditions. Power: at n=30, binomial test detects true accuracy >= 40% with 80% power (H0: p=1/6). If the true effect is smaller (e.g., 25% accuracy), we're underpowered. Researcher degrees of freedom: limited by pre-registered metrics, no iterative refinement, all trials reported. Prior probability that lineup detection works: moderate — it works for PR descriptions, unknown for long-form prose. |
 | 19 | Mayo | The test is moderately severe. Passing requires: (a) Condition 1 at chance AND (b) Condition 2 above chance AND (c) reasons coded as voice/register, not topic. A method that only detects topic mismatch would fail (a) or (c). A method that only detects "not in pool" would fail (a). A method that only detects AI output would pass (a-b) but provide no signal on Condition 4. |
 | 20 | Gwern | **Full trail published.** All 120 trial files with prompts, responses, and scores. analysis.py with no manual overrides. PREREG committed before any trials run. No prompt iteration during the experiment. The repo is public. |
-| 21 | Gwern | Predictions, timestamped now: (1) Condition 1 accuracy < 9/30. (2) Condition 2 accuracy >= 20/30. (3) Condition 3 accuracy >= 12/30. (4) Condition 4 accuracy between 8/30 and 18/30. Scored after all trials complete. |
-| 22 | Ramdas | No sequential testing. All 120 trials run before any analysis. No peeking, no sample expansion. If 30 trials per condition proves underpowered, we note it in RESULTS.md and pre-register a follow-up with more trials rather than expanding mid-experiment. |
+| 21 | Gwern | Predictions, timestamped now: (1) C1 held-out LW < 7/20. (2) C2 HN negative >= 14/20. (3) C3 raw AI >= 16/20. (4) C4 humanized AI >= 10/20. (5) C5 user posts 5-12/20. (6) C6 perturbations: topic-match drops detection by >= 4 trials vs C5, structure-match by >= 2 more, style-match by >= 2 more. Ordering: topic > structure > style in effect size. Scored after all trials complete. |
+| 22 | Ramdas | No sequential testing. All 120 trials run before any analysis. No peeking, no sample expansion. If 20 trials per condition proves underpowered, we note it in RESULTS.md and pre-register a follow-up with more trials rather than expanding mid-experiment. |
 
 ## Timeline
 
