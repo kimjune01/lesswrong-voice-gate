@@ -36,13 +36,16 @@ Prior work ([slop-detection](/slop-detection)) showed that explicit rubrics beco
 - **Exclusion:** posts by Eliezer, Scott Alexander, Zvi — too recognizable, would anchor the lineup on celebrity voice rather than site voice
 - **Format:** title + body, stripped of metadata, author, karma
 
-### Lineup construction
+### Lineup construction (paragraph-level)
 
-Each trial:
-1. Draw 5 positive samples from the pool (without replacement within trial, with replacement across trials)
-2. Insert 1 candidate post as the 6th entry
-3. Shuffle into random order with neutral labels (Text A through F)
-4. Prompt: "Here are 6 posts. One may not belong to the same distribution as the others. Which one, and why? If they all belong, say so."
+The unit of measurement is a paragraph, not a whole post. For each candidate paragraph:
+1. Classify its **section role**: opening, argument, evidence, transition, conclusion
+2. Draw 5 paragraphs from LW positive samples matched by section role
+3. Shuffle into random order with neutral labels (Paragraph A through F)
+4. Prompt: "Here are 6 paragraphs from blog posts in the same genre. One may not match the others. Which one, and why? If they all match, say so."
+5. Repeat 3 times with different LW draws per paragraph
+
+Post-level verdict is derived: if >= 30% of a post's paragraphs are red (detected 2+ times out of 3), the post fails the gate.
 
 ### Topic gate (pre-lineup)
 
@@ -67,18 +70,22 @@ A candidate that gets routed elsewhere (Hacker News, personal blog, ML subreddit
 
 ### Trial count
 
-- 30 trials per condition × 6 conditions = 180 total
-- Each trial uses a fresh draw of 5 positive samples
-- Candidate post is fixed within a condition but lineup composition varies
-- **Why 30:** Bonferroni correction for 6 simultaneous comparisons sets alpha to 0.0083. At n=30, critical k=11, power=0.95 at true detection rate 50%. At n=20, power drops to 0.75 — too weak to distinguish a real signal from noise across 6 conditions.
+Per candidate post: P paragraphs × 3 repetitions = 3P trials. A typical post has ~15 paragraphs = ~45 trials.
+
+Per condition: one representative post, producing ~45 trials.
+
+Total: 6 conditions × ~45 trials = ~270 trials.
+
+**Power:** The primary metric is the fraction of red paragraphs per post. For a 15-paragraph post, 3 reps each, we test whether the red fraction exceeds the null rate (~16.7% of paragraphs randomly detected). At 15 paragraphs, detecting a true red rate of 40% vs null 16.7% has >90% power (binomial on paragraph counts). Bonferroni across 6 conditions: alpha=0.0083, still well-powered at 15 paragraphs.
 
 ### Statistical plan
 
 **Primary metric:** outlier identification accuracy per condition.
 
-- Chance baseline: 1/6 ≈ 16.7%
-- Detection threshold: Bonferroni-corrected alpha = 0.05/6 = 0.0083 per condition (one-sided binomial test)
-- With 30 trials: need >= 11/30 correct identifications to reject H0 per condition
+- Chance baseline: 1/6 ≈ 16.7% of paragraphs detected as outlier by chance
+- Per-paragraph: detected if identified as outlier in >= 2/3 repetitions
+- Per-post: red fraction = (red paragraphs) / (total paragraphs). Post fails if red fraction >= 30%
+- Per-condition: Bonferroni-corrected alpha = 0.05/6 = 0.0083. Test whether the post's red fraction is significantly above the null rate (one-sided binomial on paragraph counts)
 
 **Secondary metrics:**
 - Reason classification: for each correct identification, code the stated reason as {topic, structure, style, voice, substance, other} — maps directly to confound hypotheses
@@ -147,13 +154,51 @@ The experiment succeeds (voice gate is viable) if:
 | 18 | Ioannidis | 30 trials × 6 conditions = 180 total. Bonferroni correction (alpha=0.0083) controls family-wise error. Power at n=30 with corrected alpha: 0.95 at true rate 50%, 0.41 at 30%. Researcher degrees of freedom: limited by pre-registered metrics, fixed conditions, no iterative refinement, all trials reported. The confound hypotheses are ordered a priori (topic → structure → style → voice), not discovered post-hoc. Prior probability that lineup detection works: moderate — it works for PR descriptions, unknown for long-form prose. |
 | 19 | Mayo | The test is moderately severe. Passing requires: (a) Condition 1 at chance AND (b) Condition 2 above chance AND (c) reasons coded as voice/register, not topic. A method that only detects topic mismatch would fail (a) or (c). A method that only detects "not in pool" would fail (a). A method that only detects AI output would pass (a-b) but provide no signal on Condition 4. |
 | 20 | Gwern | **Full trail published.** All 120 trial files with prompts, responses, and scores. analysis.py with no manual overrides. PREREG committed before any trials run. No prompt iteration during the experiment. The repo is public. |
-| 21 | Gwern | Predictions, timestamped now: (1) C1 held-out LW < 11/30. (2) C2 HN negative >= 20/30. (3) C3 raw AI >= 24/30. (4) C4 humanized AI >= 15/30. (5) C5 user posts 8-18/30. (6) C6 perturbations: topic-match drops detection by >= 5 trials vs C5, structure-match by >= 3 more, style-match by >= 3 more. Ordering: topic > structure > style in effect size. Scored after all trials complete. |
-| 22 | Ramdas | No sequential testing. All 180 trials run before any analysis. No peeking, no sample expansion. If 30 trials per condition proves underpowered, we note it in RESULTS.md and pre-register a follow-up rather than expanding mid-experiment. |
+| 21 | Gwern | Predictions, timestamped now (as red paragraph fractions): (1) C1 held-out LW: < 20% red. (2) C2 HN negative: >= 60% red. (3) C3 raw AI: >= 75% red. (4) C4 humanized AI: >= 40% red. (5) C5 user posts: 20-50% red. (6) C6 perturbations: topic-match drops red fraction by >= 15pp vs C5, structure-match by >= 10pp more, style-match by >= 10pp more. Ordering: topic > structure > style in effect size. Scored after all trials complete. |
+| 22 | Ramdas | No sequential testing. All ~270 trials run before any analysis. No peeking, no sample expansion. If underpowered, we note it in RESULTS.md and pre-register a follow-up (more reps per paragraph or more candidate posts per condition) rather than expanding mid-experiment. |
+
+## Phase 2: Paragraph-level lineup
+
+The post-level lineup answers "does this post belong?" The paragraph-level lineup answers "which parts don't belong?" — actionable for revision.
+
+### Design
+
+1. Segment candidate post into paragraphs (natural breaks, min 2 sentences each)
+2. For each candidate paragraph, draw 5 paragraphs from LW positive samples matched by **section role** (opening, argument, evidence, transition, conclusion). Role matching prevents the lineup from detecting "this is an introduction among conclusions."
+3. Shuffle into 6-entry lineup with neutral labels
+4. Prompt: "Here are 6 paragraphs from blog posts in the same genre. One may not match the others. Which one, and why? If they all match, say so."
+
+### Trial structure
+
+- Each candidate post produces N paragraph trials (one per paragraph)
+- 3 repetitions per paragraph (different LW draws each time) to measure consistency
+- Total trials per candidate post: N × 3
+
+### Output
+
+Per-post heatmap:
+- **Green (0-1/3 detected):** paragraph passes — consistent with the LW distribution
+- **Yellow (2/3 detected):** borderline — model detects inconsistently, may be a weak signal
+- **Red (3/3 detected):** paragraph fails — reliably detected as outlier
+
+With reason codes per detection: {topic, structure, style, voice}. The heatmap shows where in the post each confound is active.
+
+### Why this replaces post-level lineups
+
+A post-level lineup is a strictly weaker version of the paragraph-level lineup. Post-level detection = "enough paragraphs were outliers that the whole thing reads wrong." The paragraph lineup measures this directly and tells you which ones. Running both is redundant.
+
+The post-level verdict is derived: if >= 30% of paragraphs are red, the post fails. The threshold is pre-registered, not discovered from data.
+
+### Power
+
+Each candidate post contributes N×3 trials. A 15-paragraph post produces 45 trials. Per-paragraph detection is a separate binomial test (H0: p=1/6). At 3 repetitions, we can't make strong claims about individual paragraphs — but the aggregate (fraction of red paragraphs) is well-powered across the post. A post with 15 paragraphs × 3 reps = 45 trials total, testing the post-level rate against H0 (all paragraphs at chance). Bonferroni is unnecessary within a post since the aggregate is the metric, not individual paragraph significance.
 
 ## Timeline
 
-1. Collect positive samples (scrape 30 LW posts)
-2. Prepare candidates (4 conditions)
-3. Run 120 trials
-4. Score and analyze
-5. Write RESULTS.md
+1. Collect positive samples (30 LW posts — done)
+2. Collect negative samples (15 HN posts — done)
+3. Prepare candidates (6 conditions)
+4. Run Phase 1: 180 post-level trials
+5. Score Phase 1, identify failing posts
+6. Run Phase 2: paragraph-level lineups on failing posts
+7. Write RESULTS.md
