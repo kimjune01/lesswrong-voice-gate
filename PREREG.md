@@ -67,17 +67,18 @@ A candidate that gets routed elsewhere (Hacker News, personal blog, ML subreddit
 
 ### Trial count
 
-- 20 trials per condition × 6 conditions = 120 total
+- 30 trials per condition × 6 conditions = 180 total
 - Each trial uses a fresh draw of 5 positive samples
 - Candidate post is fixed within a condition but lineup composition varies
+- **Why 30:** Bonferroni correction for 6 simultaneous comparisons sets alpha to 0.0083. At n=30, critical k=11, power=0.95 at true detection rate 50%. At n=20, power drops to 0.75 — too weak to distinguish a real signal from noise across 6 conditions.
 
 ### Statistical plan
 
 **Primary metric:** outlier identification accuracy per condition.
 
 - Chance baseline: 1/6 ≈ 16.7%
-- Detection threshold: significantly above chance at p < 0.05 (one-sided binomial test)
-- With 20 trials: need >= 7/20 correct identifications to reject H0 (binomial, n=20, p=1/6, alpha=0.05)
+- Detection threshold: Bonferroni-corrected alpha = 0.05/6 = 0.0083 per condition (one-sided binomial test)
+- With 30 trials: need >= 11/30 correct identifications to reject H0 per condition
 
 **Secondary metrics:**
 - Reason classification: for each correct identification, code the stated reason as {topic, structure, style, voice, substance, other} — maps directly to confound hypotheses
@@ -99,7 +100,7 @@ The experiment succeeds (voice gate is viable) if:
 - **Topic confound:** model identifies the outlier by topic mismatch, not voice. Mitigated by topic-matching the candidate to the lineup draw.
 - **Length confound:** LW posts vary wildly in length. Mitigated by trimming all entries to first 2000 words.
 - **Memorization:** model recognizes specific LW posts from training. Mitigated by excluding the most famous authors and checking if Condition 1 accuracy is above chance (it shouldn't be).
-- **Low power:** 20 trials per condition may be insufficient. Power analysis: at 20 trials, we can detect a true accuracy of >= 45% with 80% power (binomial test, H0 p=1/6). If the effect is smaller, we need more trials.
+- **Low power:** at 30 trials with Bonferroni correction (alpha=0.0083), power is 0.95 at true detection rate 50%, 0.41 at 30%. If the true effect is below 40%, we'll miss it. Acceptable: effects below 40% are too weak to be a useful gate anyway.
 
 ## Models
 
@@ -143,11 +144,11 @@ The experiment succeeds (voice gate is viable) if:
 | 15 | Meehl | With a 6-way forced choice, more data makes the test harder only if the model's true accuracy is close to chance. If the model is genuinely detecting outliers, more trials increases confidence. The prediction is specific: Condition 1 at chance, Condition 2 well above chance, Conditions 3-4 somewhere between. More data sharpens these estimates. The prediction is directional but the ordering (C1 < C4 < C3 < C2) is specific enough to fail. |
 | 16 | Feynman | **Most likely artifact:** the model recognizes its own output in Conditions 2-3 ("this sounds like me") rather than detecting voice mismatch with LW. This would still produce high detection rates but wouldn't generalize to human-written non-LW posts. Condition 4 (user's actual writing) is the test: if the model detects it at the same rate as raw AI, it's detecting "not AI" rather than "not LW." If it detects it at a lower rate, voice is a real signal. |
 | 17 | Pearl | No causal claim. The claim is: "lineup detection rate predicts LW reception" — a correlational hypothesis. We don't intervene on LW moderation. |
-| 18 | Ioannidis | 30 trials per condition, 4 conditions. Power: at n=30, binomial test detects true accuracy >= 40% with 80% power (H0: p=1/6). If the true effect is smaller (e.g., 25% accuracy), we're underpowered. Researcher degrees of freedom: limited by pre-registered metrics, no iterative refinement, all trials reported. Prior probability that lineup detection works: moderate — it works for PR descriptions, unknown for long-form prose. |
+| 18 | Ioannidis | 30 trials × 6 conditions = 180 total. Bonferroni correction (alpha=0.0083) controls family-wise error. Power at n=30 with corrected alpha: 0.95 at true rate 50%, 0.41 at 30%. Researcher degrees of freedom: limited by pre-registered metrics, fixed conditions, no iterative refinement, all trials reported. The confound hypotheses are ordered a priori (topic → structure → style → voice), not discovered post-hoc. Prior probability that lineup detection works: moderate — it works for PR descriptions, unknown for long-form prose. |
 | 19 | Mayo | The test is moderately severe. Passing requires: (a) Condition 1 at chance AND (b) Condition 2 above chance AND (c) reasons coded as voice/register, not topic. A method that only detects topic mismatch would fail (a) or (c). A method that only detects "not in pool" would fail (a). A method that only detects AI output would pass (a-b) but provide no signal on Condition 4. |
 | 20 | Gwern | **Full trail published.** All 120 trial files with prompts, responses, and scores. analysis.py with no manual overrides. PREREG committed before any trials run. No prompt iteration during the experiment. The repo is public. |
-| 21 | Gwern | Predictions, timestamped now: (1) C1 held-out LW < 7/20. (2) C2 HN negative >= 14/20. (3) C3 raw AI >= 16/20. (4) C4 humanized AI >= 10/20. (5) C5 user posts 5-12/20. (6) C6 perturbations: topic-match drops detection by >= 4 trials vs C5, structure-match by >= 2 more, style-match by >= 2 more. Ordering: topic > structure > style in effect size. Scored after all trials complete. |
-| 22 | Ramdas | No sequential testing. All 120 trials run before any analysis. No peeking, no sample expansion. If 20 trials per condition proves underpowered, we note it in RESULTS.md and pre-register a follow-up with more trials rather than expanding mid-experiment. |
+| 21 | Gwern | Predictions, timestamped now: (1) C1 held-out LW < 11/30. (2) C2 HN negative >= 20/30. (3) C3 raw AI >= 24/30. (4) C4 humanized AI >= 15/30. (5) C5 user posts 8-18/30. (6) C6 perturbations: topic-match drops detection by >= 5 trials vs C5, structure-match by >= 3 more, style-match by >= 3 more. Ordering: topic > structure > style in effect size. Scored after all trials complete. |
+| 22 | Ramdas | No sequential testing. All 180 trials run before any analysis. No peeking, no sample expansion. If 30 trials per condition proves underpowered, we note it in RESULTS.md and pre-register a follow-up rather than expanding mid-experiment. |
 
 ## Timeline
 
