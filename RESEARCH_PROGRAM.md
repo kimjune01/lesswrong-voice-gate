@@ -85,6 +85,20 @@ An insta-ban suite that catches the bottom 90% by effort restores the hit rate a
 
 18 dead PRs on one issue from 2 years ago. A human wouldn't touch it. The per-issue body-count check already catches this. No new tool needed — the existing threshold (3+ closed-unmerged) handles it. The lesson is that the tool works for extreme cases without modification.
 
+### Complementation, not replacement
+
+The machine handles volume and consistency. The human handles novelty and adaptation. The agent runs the pipeline; the human decides when to break it. Today the pipeline ran correctly — per-repo pacing, test gates, codex crosscheck, all green — and three batch-closes showed the rules were wrong. The human noticed a category the pipeline didn't have (org-level blast radius) and redrew the graph. That's metacognition: reasoning about the reasoning process, not just running it.
+
+Machines adapt when someone writes a new rule. Humans adapt by noticing the rules don't apply anymore. Humans can outpace encoded adaptation because they engage in metacognition — they don't just follow the hypothesis graph, they notice when the graph itself is wrong. This is why complementation wins over full automation: the adversarial environment generates novel situations faster than any fixed pipeline can handle.
+
+### Ratchet
+
+Each human adaptation gets encoded into the pipeline and never regresses. The org-gate becomes baseline. The body-count check becomes baseline. Each tool only turns one way. The human adapts once, the machine remembers forever.
+
+### Maintainer tooling demand
+
+As the bar rises, maintainers' SNR problem gets worse. They will reach for tools that make the problem legible — tools that screen, score, and surface the signal before human attention is spent. If those tools are being built in public, by contributors red-teaming their own pipelines, they're the ones maintainers find first.
+
 ### Publication as forcing function
 
 Publishing the attack forces merit-based evaluation. If the voice gate skill is public and anyone can use it, moderators can't reject selectively on suspicion of using it — that means rejecting anyone who writes well on their first post. But the countercase exists: communities may respond by restricting intake instead of improving evaluation (curl → GitHub-only reporting, no rewards). Trust vs merit is not resolved by publishing; it's surfaced.
