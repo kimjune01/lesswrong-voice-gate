@@ -2,23 +2,23 @@
 
 ## Research question
 
-Can a frontier model distinguish a candidate blog post from high-karma LessWrong posts in a blind lineup, using only positive samples (no "AI slop" definition, no rubric)?
+Can a frontier model distinguish candidate paragraphs from high-karma LessWrong paragraphs in a blind lineup, using only positive samples — no rubric, no "AI slop" definition?
 
 ## Hypotheses
 
-**H0 (null):** GPT-5.5 identifies the candidate as the outlier at chance rate (1/6).
+**H0 (null):** GPT-5.5 identifies the candidate paragraph as the outlier at chance rate (1/6).
 
-Three confound hypotheses explain *why* the model detects the outlier. Each predicts different reason codes and responds to different perturbations:
+Four confound hypotheses explain *why* the model detects the outlier, ordered by expected effect size:
 
-**H_topic:** Detection is driven by topic mismatch. The candidate writes about GitHub contribution pipelines; the lineup writes about AI alignment. Perturbation: reframe the candidate through a LW-native lens (e.g., "adversarial dynamics in open-source contribution markets"). If detection drops, topic was the signal.
+**H_topic:** Detection is driven by topic mismatch. The candidate writes about GitHub contribution pipelines; the lineup writes about AI alignment. Perturbation: reframe the candidate through a LW-native lens. If detection drops, topic was the signal.
 
-**H_structure:** Detection is driven by format/structural mismatch. LW posts use specific patterns: footnotes, epistemic status headers, inline caveats, nested parenthetical asides, section-less flowing argument. Perturbation: reformat the candidate into LW structural conventions without changing the argument. If detection drops, structure was the signal.
+**H_structure:** Detection is driven by format/structural mismatch. LW posts use specific patterns: footnotes, epistemic status headers, inline caveats, nested parenthetical asides, section-less flowing argument. Perturbation: reformat without changing the argument. If detection drops, structure was the signal.
 
-**H_style:** Detection is driven by prose register mismatch. LW has a specific vocabulary, hedging pattern, and compression style distinct from HN/personal blogs. Perturbation: rewrite the candidate in LW register without changing topic or structure. If detection drops, style was the signal.
+**H_style:** Detection is driven by prose register mismatch. LW has a specific vocabulary, hedging pattern, and compression style distinct from HN/personal blogs. Perturbation: rewrite in LW register without changing topic or structure. If detection drops, style was the signal.
 
-**H_voice (target):** Detection persists after controlling for topic, structure, and style — the candidate lacks something irreducible about the author's relationship to the LW intellectual community. This is the hard signal and the one worth investigating if the others are eliminated.
+**H_voice:** Detection persists after controlling for topic, structure, and style — the candidate lacks something irreducible about the author's relationship to the LW intellectual community. This is the hard signal.
 
-The hypothesis graph is: H_topic → H_structure → H_style → H_voice. Each perturbation kills or confirms one edge. The investigation follows the surviving path.
+The hypothesis graph is: H_topic → H_structure → H_style → H_voice. Each perturbation kills or confirms one edge.
 
 ## Why induction, not rubric
 
@@ -34,99 +34,107 @@ Prior work ([slop-detection](/slop-detection)) showed that explicit rubrics beco
   - Rationality / epistemics (10)
   - Applied / technical / field reports (10)
 - **Exclusion:** posts by Eliezer, Scott Alexander, Zvi — too recognizable, would anchor the lineup on celebrity voice rather than site voice
-- **Format:** title + body, stripped of metadata, author, karma
+- **Format:** markdown body, stripped of metadata, author, karma
+- **Status:** collected via LessWrong GraphQL API (`data/positive-samples/`)
 
-### Lineup construction (paragraph-level)
+### Paragraph-level lineup
 
-The unit of measurement is a paragraph, not a whole post. For each candidate paragraph:
+The unit of measurement is a paragraph, not a whole post. Post-level lineups are strictly weaker: they detect but don't localize. The paragraph lineup measures per-paragraph, derives the post verdict from the red fraction.
+
+For each candidate paragraph:
 1. Classify its **section role**: opening, argument, evidence, transition, conclusion
 2. Draw 5 paragraphs from LW positive samples matched by section role
 3. Shuffle into random order with neutral labels (Paragraph A through F)
 4. Prompt: "Here are 6 paragraphs from blog posts in the same genre. One may not match the others. Which one, and why? If they all match, say so."
 5. Repeat 3 times with different LW draws per paragraph
 
-Post-level verdict is derived: if >= 30% of a post's paragraphs are red (detected 2+ times out of 3), the post fails the gate.
+**Post-level verdict** is derived: if >= 30% of a post's paragraphs are red (detected 2+ times out of 3), the post fails the gate. The threshold is pre-registered, not discovered from data.
+
+**Per-post heatmap output:**
+- **Green (0-1/3 detected):** paragraph passes
+- **Yellow (2/3 detected):** borderline
+- **Red (3/3 detected):** paragraph fails
+
+With reason codes per detection: {topic, structure, style, voice}.
 
 ### Topic gate (pre-lineup)
 
-Before voice testing, run a topic fitness check. Not every june.kim post belongs on LessWrong — the site has a specific appetite and a candidate must fit it.
+Before voice testing, run a topic fitness check:
 
 1. Extract the candidate's central question in one sentence
 2. Present it alongside 10 real LessWrong post titles+abstracts (high karma, mixed topics)
 3. Prompt: "A user is deciding where to post this. Does it belong in this collection, or somewhere else? If somewhere else, where?"
 
-A candidate that gets routed elsewhere (Hacker News, personal blog, ML subreddit) doesn't enter the voice lineup. The topic gate filters before the voice gate — no point polishing voice for an audience that won't click.
+A candidate routed elsewhere doesn't enter the lineup. The topic gate also reports reframing suggestions: "Bot-magnet issues on GitHub" is an HN post; "Adversarial dynamics in open-source contribution markets" is a LW post. Same content, different lens.
 
-**Topic translation:** some june.kim posts have LW-relevant substance but wrong framing. "Bot-magnet issues on GitHub" is an HN post. "Adversarial dynamics in open-source contribution markets" is a LW post. Same content, different lens. The topic gate should also report: "this could fit if reframed as X."
+### Candidate conditions
 
-### Candidate posts
-
-- **Condition 1 (calibration — should pass):** known LessWrong posts held out from the pool
-- **Condition 2 (HN negative — should fail):** high-scoring Hacker News blog posts. Same internet, different community. Tests whether the lineup detects community membership, not just "good writing." Source: `data/negative-samples-hn/`
-- **Condition 3 (raw AI — should fail):** Claude-generated posts on LW-adjacent topics
-- **Condition 4 (humanized AI):** Claude posts after copyedit pipeline (humanize → tighten → sharpen)
-- **Condition 5 (target):** the user's actual blog posts from june.kim, reframed through the topic gate's suggested lens if needed
-- **Condition 6 (perturbation):** Condition 5 posts rewritten to control for one confound at a time (topic-matched, then structure-matched, then style-matched). Each perturbation isolates one hypothesis edge.
+- **C1 (calibration — should pass):** held-out LessWrong posts
+- **C2 (HN negative — should fail):** high-scoring Hacker News blog posts. Same internet, different community. Tests community detection vs quality detection. Source: `data/negative-samples-hn/`
+- **C3 (raw AI — should fail):** Claude-generated posts on LW-adjacent topics
+- **C4 (humanized AI):** Claude posts after copyedit pipeline (humanize → tighten → sharpen)
+- **C5 (target):** june.kim blog posts, reframed through topic gate if needed
+- **C6 (perturbation):** C5 posts rewritten to control for one confound at a time (topic-matched → structure-matched → style-matched). Each perturbation isolates one hypothesis edge.
 
 ### Trial count
 
-Per candidate post: P paragraphs × 3 repetitions = 3P trials. A typical post has ~15 paragraphs = ~45 trials.
+Per candidate post: P paragraphs × 3 repetitions. A typical post has ~15 paragraphs = ~45 trials.
 
-Per condition: one representative post, producing ~45 trials.
+Per condition: one representative post, ~45 trials.
 
 Total: 6 conditions × ~45 trials = ~270 trials.
 
-**Power:** The primary metric is the fraction of red paragraphs per post. For a 15-paragraph post, 3 reps each, we test whether the red fraction exceeds the null rate (~16.7% of paragraphs randomly detected). At 15 paragraphs, detecting a true red rate of 40% vs null 16.7% has >90% power (binomial on paragraph counts). Bonferroni across 6 conditions: alpha=0.0083, still well-powered at 15 paragraphs.
-
 ### Statistical plan
 
-**Primary metric:** outlier identification accuracy per condition.
+**Primary metric:** red paragraph fraction per condition.
 
-- Chance baseline: 1/6 ≈ 16.7% of paragraphs detected as outlier by chance
-- Per-paragraph: detected if identified as outlier in >= 2/3 repetitions
-- Per-post: red fraction = (red paragraphs) / (total paragraphs). Post fails if red fraction >= 30%
-- Per-condition: Bonferroni-corrected alpha = 0.05/6 = 0.0083. Test whether the post's red fraction is significantly above the null rate (one-sided binomial on paragraph counts)
+- Chance baseline: 1/6 ≈ 16.7% of paragraphs detected by chance
+- Per-paragraph: red if identified as outlier in >= 2/3 repetitions
+- Per-post: red fraction = red paragraphs / total paragraphs
+- Per-condition: Bonferroni-corrected alpha = 0.05/6 = 0.0083. Test whether the red fraction is significantly above the null rate (one-sided binomial on paragraph counts)
+
+**Power:** For a 15-paragraph post, detecting a true red rate of 40% vs null 16.7% has >90% power. Bonferroni across 6 conditions: still well-powered.
 
 **Secondary metrics:**
-- Reason classification: for each correct identification, code the stated reason as {topic, structure, style, voice, substance, other} — maps directly to confound hypotheses
-- False positive rate on Condition 1 (should be ≈ chance)
-- Condition 2 (HN) vs Condition 3 (raw AI) comparison: does the model detect community mismatch or AI-ness?
-- Condition 6 (perturbation) trajectories: which perturbation kills detection? That identifies the dominant confound.
+- Reason codes mapped to confound hypotheses
+- C1 false positive rate (should be ≈ chance)
+- C2 vs C3: community mismatch vs AI-ness — do HN posts and raw AI fail for different reasons?
+- C6 perturbation trajectory: which confound removal has the largest effect?
 
 ### Success criteria
 
-The experiment succeeds (voice gate is viable) if:
-1. Condition 1 (held-out LW) detection rate ≈ chance (false positive check)
-2. Condition 2 (HN) detection rate significantly above chance (the lineup detects community, not just quality)
-3. Condition 3 (raw AI) detection rate significantly above chance (baseline sensitivity)
-4. Condition 6 (perturbations) produces a monotonic trajectory: each confound removed reduces detection rate. The confound hierarchy H_topic → H_structure → H_style → H_voice is ordered by which perturbation has the largest effect.
-5. Condition 5 (user's posts) provides actionable signal: either passes (ready to submit) or the surviving confound names the fix
+1. C1 red fraction ≈ chance (false positive check)
+2. C2 red fraction significantly above chance (detects community, not just quality)
+3. C3 red fraction significantly above chance (baseline sensitivity)
+4. C6 perturbations produce a monotonic trajectory: each confound removed reduces detection
+5. C5 provides actionable signal: either passes (ready to submit) or the surviving confound names the fix
 
 ### Failure modes
 
-- **Topic confound:** model identifies the outlier by topic mismatch, not voice. Mitigated by topic-matching the candidate to the lineup draw.
-- **Length confound:** LW posts vary wildly in length. Mitigated by trimming all entries to first 2000 words.
-- **Memorization:** model recognizes specific LW posts from training. Mitigated by excluding the most famous authors and checking if Condition 1 accuracy is above chance (it shouldn't be).
-- **Low power:** at 30 trials with Bonferroni correction (alpha=0.0083), power is 0.95 at true detection rate 50%, 0.41 at 30%. If the true effect is below 40%, we'll miss it. Acceptable: effects below 40% are too weak to be a useful gate anyway.
+- **Topic confound:** model detects topic, not voice. Mitigated by section-role matching and topic gate.
+- **Length confound:** paragraphs vary in length. Mitigated by min 2 sentences per paragraph, length-aware draw from LW pool.
+- **Memorization:** model recognizes LW posts from training. Mitigated by author exclusion + C1 false positive check.
+- **Low power:** at 15 paragraphs with Bonferroni correction, power is >90% at 40% true red rate, ~50% at 30%. Effects below 30% are undetectable but also too weak to be a useful gate.
 
 ## Models
 
-- **Primary:** GPT-5.5 via codex (same model used in slop-detection, continuity with prior work)
+- **Primary:** GPT-5.5 via codex (continuity with slop-detection)
 - **Secondary:** Gemini 3.1 Pro (independent model family, cross-validation)
-- If the two models disagree on outlier identification, that's informative — it suggests the detection signal is model-specific rather than structural.
+- Disagreement between models suggests the detection signal is model-specific, not structural.
 
 ## Outputs
 
-- `data/positive-samples/` — 30 LW posts, stripped
+- `data/positive-samples/` — 30 LW posts (collected)
+- `data/negative-samples-hn/` — 15 HN posts (collected)
 - `data/candidates/` — posts per condition
 - `trials/` — one file per trial with lineup, prompt, response, scored result
-- `analysis.py` — binomial tests, reason coding, summary stats
+- `analysis.py` — binomial tests, reason coding, heatmap generation
 - `RESULTS.md` — written after all trials complete, not before
 
 ## What we will NOT do
 
 - No rubric in the prompt. The whole point is induction from examples.
-- No iterative refinement during the experiment. Run all 120 trials, analyze, then decide.
+- No iterative refinement during the experiment. Run all ~270 trials, analyze, then decide.
 - No cherry-picking which trials to report. All trials, all results.
 - No post-hoc metric invention. The metrics above are the metrics.
 
@@ -134,71 +142,35 @@ The experiment succeeds (voice gate is viable) if:
 
 | # | Source | Answer |
 |---|--------|--------|
-| 1 | Bacon | Positive samples are stratified by topic cluster to prevent cherry-picking posts that favor or disfavor detection. Lineup draws are randomized. |
-| 2 | Bacon | Data collection is fixed: 30 LW posts collected before any trials run. Candidate selection per condition is fixed before trials. No adjustments after seeing results. |
-| 3 | Descartes | **Critical assumption:** the model's outlier detection is driven by voice/register, not topic or memorization. If false, the experiment measures topic fit or author recognition, not voice. Condition 1 (calibration) tests this — if held-out LW posts are detected as outliers, the assumption fails. |
-| 4 | Hume | The mechanism: LW posts share distributional properties (vocabulary, argument structure, epistemic register) that a model can induce from examples. An outlier deviates from this induced distribution. The claim is correlational — "detected as outlier" correlates with "wouldn't survive on LW" — not causal. We don't claim detection *causes* rejection. |
-| 5 | Hume | Results apply to GPT-5.5's detection ability on English-language rationalist blog posts. No claim about other models, other communities, other languages, or human readers. |
-| 6 | Mill | Each condition varies one thing: Condition 1 = real LW post (null), Condition 2 = raw AI, Condition 3 = humanized AI, Condition 4 = user's actual writing. Lineup composition varies across trials but is randomized, not systematically different between conditions. |
-| 7 | Mill | Control is Condition 1: held-out LW posts that should NOT be detected. This isolates "outlier detection" from "detecting anything that isn't in the training pool." |
-| 8 | Chamberlin | Competing explanations for high detection on Conditions 2-4: (a) topic mismatch, not voice — mitigated by topic matching; (b) length mismatch — mitigated by trimming to 2000 words; (c) memorization of specific LW posts — mitigated by author exclusion + Condition 1 check; (d) the model is random but we got lucky — addressed by binomial test. We test between (a) and "true voice detection" via reason coding. |
-| 9 | Peirce | The hypothesis (lineup detection works) comes from the PR-description crosscheck in the drip pipeline, which uses the same lineup method. The LW application is a new domain. We are not inferring the hypothesis from this data. |
-| 10 | Fisher | Lineup position is randomized (shuffled labels A-F). Positive sample draws are randomized. No systematic assignment bias. |
-| 11 | Popper | **Falsification:** if Condition 1 identification rate is significantly above chance (>= 9/30), the method is broken — it's detecting "not in the pool" rather than "doesn't belong." If Condition 2 identification rate is NOT above chance, the method has no power. Either outcome kills the approach. |
-| 12 | Popper | The bar (>= 9/30, p < 0.05 one-sided binomial) is informative: chance is 5/30. The gap between chance (5) and threshold (9) is meaningful. We are not testing "model does better than a coin flip" — we're testing "model does better than random guessing on a 6-way forced choice." |
-| 13 | Kuhn | **Invisible assumption:** "high karma = good LW post." Karma correlates with agreement and timing, not just quality. A >= 100 threshold filters for broad approval but may exclude contrarian or niche posts that represent the real LW distribution. Also: "LW voice" may not be a single distribution — alignment posts vs rationality posts vs field reports may have different registers. Stratification partially addresses this. |
-| 14 | Platt | The experiment excludes the alternative "lineup detection is just memorization" (via Condition 1). It excludes "lineup detection is just topic matching" (via topic-matched lineups + reason coding). If all alternatives are excluded and detection still works, voice/register mismatch is the remaining explanation. |
-| 15 | Meehl | With a 6-way forced choice, more data makes the test harder only if the model's true accuracy is close to chance. If the model is genuinely detecting outliers, more trials increases confidence. The prediction is specific: Condition 1 at chance, Condition 2 well above chance, Conditions 3-4 somewhere between. More data sharpens these estimates. The prediction is directional but the ordering (C1 < C4 < C3 < C2) is specific enough to fail. |
-| 16 | Feynman | **Most likely artifact:** the model recognizes its own output in Conditions 2-3 ("this sounds like me") rather than detecting voice mismatch with LW. This would still produce high detection rates but wouldn't generalize to human-written non-LW posts. Condition 4 (user's actual writing) is the test: if the model detects it at the same rate as raw AI, it's detecting "not AI" rather than "not LW." If it detects it at a lower rate, voice is a real signal. |
-| 17 | Pearl | No causal claim. The claim is: "lineup detection rate predicts LW reception" — a correlational hypothesis. We don't intervene on LW moderation. |
-| 18 | Ioannidis | 30 trials × 6 conditions = 180 total. Bonferroni correction (alpha=0.0083) controls family-wise error. Power at n=30 with corrected alpha: 0.95 at true rate 50%, 0.41 at 30%. Researcher degrees of freedom: limited by pre-registered metrics, fixed conditions, no iterative refinement, all trials reported. The confound hypotheses are ordered a priori (topic → structure → style → voice), not discovered post-hoc. Prior probability that lineup detection works: moderate — it works for PR descriptions, unknown for long-form prose. |
-| 19 | Mayo | The test is moderately severe. Passing requires: (a) Condition 1 at chance AND (b) Condition 2 above chance AND (c) reasons coded as voice/register, not topic. A method that only detects topic mismatch would fail (a) or (c). A method that only detects "not in pool" would fail (a). A method that only detects AI output would pass (a-b) but provide no signal on Condition 4. |
-| 20 | Gwern | **Full trail published.** All 120 trial files with prompts, responses, and scores. analysis.py with no manual overrides. PREREG committed before any trials run. No prompt iteration during the experiment. The repo is public. |
-| 21 | Gwern | Predictions, timestamped now (as red paragraph fractions): (1) C1 held-out LW: < 20% red. (2) C2 HN negative: >= 60% red. (3) C3 raw AI: >= 75% red. (4) C4 humanized AI: >= 40% red. (5) C5 user posts: 20-50% red. (6) C6 perturbations: topic-match drops red fraction by >= 15pp vs C5, structure-match by >= 10pp more, style-match by >= 10pp more. Ordering: topic > structure > style in effect size. Scored after all trials complete. |
-| 22 | Ramdas | No sequential testing. All ~270 trials run before any analysis. No peeking, no sample expansion. If underpowered, we note it in RESULTS.md and pre-register a follow-up (more reps per paragraph or more candidate posts per condition) rather than expanding mid-experiment. |
-
-## Phase 2: Paragraph-level lineup
-
-The post-level lineup answers "does this post belong?" The paragraph-level lineup answers "which parts don't belong?" — actionable for revision.
-
-### Design
-
-1. Segment candidate post into paragraphs (natural breaks, min 2 sentences each)
-2. For each candidate paragraph, draw 5 paragraphs from LW positive samples matched by **section role** (opening, argument, evidence, transition, conclusion). Role matching prevents the lineup from detecting "this is an introduction among conclusions."
-3. Shuffle into 6-entry lineup with neutral labels
-4. Prompt: "Here are 6 paragraphs from blog posts in the same genre. One may not match the others. Which one, and why? If they all match, say so."
-
-### Trial structure
-
-- Each candidate post produces N paragraph trials (one per paragraph)
-- 3 repetitions per paragraph (different LW draws each time) to measure consistency
-- Total trials per candidate post: N × 3
-
-### Output
-
-Per-post heatmap:
-- **Green (0-1/3 detected):** paragraph passes — consistent with the LW distribution
-- **Yellow (2/3 detected):** borderline — model detects inconsistently, may be a weak signal
-- **Red (3/3 detected):** paragraph fails — reliably detected as outlier
-
-With reason codes per detection: {topic, structure, style, voice}. The heatmap shows where in the post each confound is active.
-
-### Why this replaces post-level lineups
-
-A post-level lineup is a strictly weaker version of the paragraph-level lineup. Post-level detection = "enough paragraphs were outliers that the whole thing reads wrong." The paragraph lineup measures this directly and tells you which ones. Running both is redundant.
-
-The post-level verdict is derived: if >= 30% of paragraphs are red, the post fails. The threshold is pre-registered, not discovered from data.
-
-### Power
-
-Each candidate post contributes N×3 trials. A 15-paragraph post produces 45 trials. Per-paragraph detection is a separate binomial test (H0: p=1/6). At 3 repetitions, we can't make strong claims about individual paragraphs — but the aggregate (fraction of red paragraphs) is well-powered across the post. A post with 15 paragraphs × 3 reps = 45 trials total, testing the post-level rate against H0 (all paragraphs at chance). Bonferroni is unnecessary within a post since the aggregate is the metric, not individual paragraph significance.
+| 1 | Bacon | Positive samples stratified by topic cluster. Lineup draws randomized. Section-role matching prevents positional bias. |
+| 2 | Bacon | Data collection fixed: 30 LW posts + 15 HN posts collected before trials. Candidate selection per condition fixed before trials. No adjustments after seeing results. |
+| 3 | Descartes | **Critical assumption:** outlier detection is driven by voice/register, not topic or memorization. If false, the experiment measures topic fit or author recognition. C1 (calibration) tests this. |
+| 4 | Hume | The mechanism: LW paragraphs share distributional properties that a model induces from examples. An outlier deviates from this induced distribution. The claim is correlational — "detected as outlier" correlates with "wouldn't survive on LW" — not causal. |
+| 5 | Hume | Results apply to GPT-5.5's detection ability on English-language rationalist blog posts. No claim about other models, communities, languages, or human readers. |
+| 6 | Mill | Each condition varies one thing: C1 = real LW (null), C2 = HN (community confound), C3 = raw AI (generation confound), C4 = humanized AI (pipeline test), C5 = user writing (target), C6 = perturbations (confound isolation). Lineup composition is randomized within conditions. |
+| 7 | Mill | Control is C1: held-out LW paragraphs that should NOT be detected. Isolates "outlier detection" from "detecting anything not in the pool." |
+| 8 | Chamberlin | Competing explanations for detection: (a) topic mismatch — mitigated by section-role matching; (b) memorization — mitigated by author exclusion + C1; (c) AI self-recognition — tested by C2 vs C3 comparison; (d) random luck — addressed by binomial test with Bonferroni. |
+| 9 | Peirce | The hypothesis (lineup detection works) comes from the PR-description crosscheck in the drip pipeline. The LW application is a new domain. Not inferred from this data. |
+| 10 | Fisher | Lineup position randomized (shuffled labels A-F). Positive sample draws randomized. Section-role matching is systematic but pre-registered. |
+| 11 | Popper | **Falsification:** C1 red fraction significantly above chance → method broken (detecting "not in pool"). C3 red fraction NOT above chance → method has no power. Either kills the approach. |
+| 12 | Popper | The bar is informative: Bonferroni-corrected alpha=0.0083 on paragraph-count binomial. Not testing "better than coin flip" — testing "better than 1/6 random guess on a 6-way forced choice." |
+| 13 | Kuhn | **Invisible assumption:** "high karma = representative LW post." Karma correlates with agreement and timing, not just quality. May exclude contrarian posts. "LW voice" may not be a single distribution — stratification partially addresses. |
+| 14 | Platt | Excludes memorization (via C1), topic matching (via section-role + reason coding), AI self-recognition (via C2 vs C3). If all are excluded and detection persists, voice/register mismatch is the remaining explanation. |
+| 15 | Meehl | Predictions are specific and ordered: C1 < C5 < C4 < C2 < C3 in red fraction. More data sharpens the ordering. The prediction can fail if the ordering is wrong. |
+| 16 | Feynman | **Most likely artifact:** the model recognizes its own output in C3-C4 rather than detecting LW voice mismatch. C5 (human-written, not AI) is the test: if detected at the same rate as C3, the method detects "not AI," not "not LW." If lower, voice is a real signal. |
+| 17 | Pearl | No causal claim. "Lineup detection rate predicts LW reception" is correlational. No intervention on LW moderation. |
+| 18 | Ioannidis | ~270 trials across 6 conditions. Bonferroni correction (alpha=0.0083) controls family-wise error. Power >90% at 40% true red rate for 15-paragraph posts. Researcher degrees of freedom limited by pre-registered metrics, fixed conditions, no iterative refinement. Confound hierarchy ordered a priori, not post-hoc. |
+| 19 | Mayo | Passing requires: C1 at chance AND C3 above chance AND C2 above chance AND reason codes map to voice/register. A method that only detects topic, memorization, or AI-ness would fail at least one gate. |
+| 20 | Gwern | **Full trail published.** All trial files with prompts, responses, scores. analysis.py with no manual overrides. PREREG committed before any trials. No prompt iteration during experiment. Repo is public. |
+| 21 | Gwern | **Predictions, timestamped now** (as red paragraph fractions): C1 < 20%. C2 >= 60%. C3 >= 75%. C4 >= 40%. C5 20-50%. C6: topic-match drops by >= 15pp vs C5, structure-match by >= 10pp more, style-match by >= 10pp more. Ordering: topic > structure > style in effect size. |
+| 22 | Ramdas | No sequential testing. All ~270 trials run before analysis. No peeking, no sample expansion. If underpowered, note in RESULTS.md and pre-register a follow-up. |
 
 ## Timeline
 
-1. Collect positive samples (30 LW posts — done)
-2. Collect negative samples (15 HN posts — done)
+1. Collect positive samples — done (30 LW posts)
+2. Collect negative samples — done (15 HN posts)
 3. Prepare candidates (6 conditions)
-4. Run Phase 1: 180 post-level trials
-5. Score Phase 1, identify failing posts
-6. Run Phase 2: paragraph-level lineups on failing posts
+4. Segment all posts into paragraphs, classify section roles
+5. Run ~270 paragraph-level lineup trials
+6. Score, generate heatmaps, run binomial tests
 7. Write RESULTS.md
