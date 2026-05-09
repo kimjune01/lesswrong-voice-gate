@@ -79,7 +79,7 @@ A candidate routed elsewhere doesn't enter the lineup. The topic gate also repor
 - **C4 (humanized AI):** Claude posts after copyedit pipeline (humanize → tighten → sharpen)
 - **C5a (target raw):** june.kim blog posts as originally written
 - **C5b (target reframed):** same posts after topic gate reframing (if the gate suggests a reframe)
-- **C5c (known rejection):** the union-find compaction post submitted to LessWrong and rejected (commit 3b269c0). Rejection feedback: "LessWrong has an unusually high bar for first-time posters." Ground truth negative — if the lineup also flags it, the method agrees with the real gate. If it doesn't, the method is weaker than the real gate. Note: rejection may reflect first-timer credit gating (same dynamic as the pallets batch-close) rather than content quality. The lineup can't distinguish these — it tests distributional fit, not moderator politics.
+- **C5c (known rejection):** the union-find compaction post submitted to LessWrong and rejected (commit 3b269c0). Rejection feedback: "LessWrong has an unusually high bar for first-time posters." One data point, ambiguous reason — we cannot infer why it was rejected. The lineup result is compared against the real outcome, not interpreted as confirming a cause.
 - **C6 (perturbation):** C5 posts rewritten to control for one confound at a time (topic-matched → structure-matched → style-matched). Each perturbation isolates one hypothesis edge.
 
 ### Trial count
